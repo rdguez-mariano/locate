@@ -24,5 +24,5 @@ h5py==2.7.1
 tqdm==4.31.1
 torch==1.0.1.post2
 torchvision==0.2.1
-Pillow==5.4.1
+Pillow==6.2.0
 seaborn==0.9.0
