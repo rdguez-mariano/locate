@@ -4,7 +4,7 @@ This repository implements LOCATE, a method for retrieving local affine approxim
 
 ## Prerequisites
 
-Before starting to use LOCATE be sure of the following.
+In order to quickly start using LOCATE we advise you to install [anaconda](https://www.anaconda.com/distribution/) and follow this guide.
 
 ##### Creating a conda environment for LOCATE
 
@@ -146,7 +146,7 @@ More available configurations can be found in [gen-tables-WACV20.py](py-tools/ge
 
 ## Using LOCATE for guided matching
 
-This feature is still unoptimised and was just used for academic purposes. It can be drastically improved to obtain better time performances.
+This code for guided matching is far from optimised. It was rather used for academic purposes. Our lazy implementation can be drastically improved to obtain better time performances.
 
 Let's see an example of using SIFT-AID with LOCATE guided matching (4 iterations).
 ```python

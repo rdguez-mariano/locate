@@ -80,7 +80,7 @@ def LaunchAndRecord_Aff_RANSAC_H(MS, p, kplistq, kplistt, total, AffInfo = 0, Aq
         if Aq2t is None:
             global graph
             with graph.as_default():
-                bEsti =train_geoesti_model.layers[2].predict(bP)
+                bEsti =LOCATEmodel.layers[2].predict(bP)
         GA = GenAffine("", DryRun=True)
         
         if Aq2t is None:
@@ -258,12 +258,12 @@ def Modified_siftAID(img1,img2, MatchingThres = math.inf, Simi='SignProx', knn_n
     bP = np.zeros( shape = tuple([len(patches1)])+tuple(np.shape(patches1[0]))+tuple([1]), dtype=np.float32)
     for k in range(0,len(patches1)):
         bP[k,:,:,0] = patches1[k][:,:]/255.0
-    emb_1 = train_model.get_layer("aff_desc").predict(bP)
+    emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
 
     bP = np.zeros( shape=tuple([len(patches2)])+tuple(np.shape(patches2[0]))+tuple([1]), dtype=np.float32)
     for k in range(0,len(patches2)):
         bP[k,:,:,0] = patches2[k][:,:]/255.0
-    emb_2 = train_model.get_layer("aff_desc").predict(bP)
+    emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
 
     ET_KP = time.time() - start_time
 
@@ -388,7 +388,7 @@ def DoGuidedMatching(matches_all, img1, img2, pyr1, pyr2, KPlist1, KPlist2, Regi
     return growed_matches, KPlist1, KPlist2
 
 
-RANSACiters = 1
+RANSACiters = 100
 dsvec = [0] # [0,1], [2,3] or [4,0,1]
 
 import pickle
@@ -470,7 +470,6 @@ for i in tqdm(dsvec):
         newtotal, newkplistq, newkplistt = DoGuidedMatching(total, p.query, p.target, pyr1, pyr2, kplistq, kplistt, LocalGeoEsti = 'affnet')
         LaunchAndRecord_USAC(SAA, p, newkplistq, newkplistt, newtotal, iters=RANSACiters)
 
-        break
         f = open(storepicklepath, 'wb')
         pickle.dump(StoreMSs, f)
         f.close()

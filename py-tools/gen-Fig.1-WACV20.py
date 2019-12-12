@@ -83,7 +83,7 @@ def WriteTangentsInTarget(img1, img2, pxl_radius = 20):
         temp = AffineKPcoor(InPatchKeys2seek, cv2.invertAffineTransform(Akp1[n]))
         keys2seek.append( temp ) 
 
-    bEsti =train_geoesti_model.layers[2].predict(bP)
+    bEsti =LOCATEmodel.layers[2].predict(bP)
     GA = GenAffine("", DryRun=True)
 
     Affmaps = []

@@ -14,11 +14,7 @@ CosProxThres = 0.4
 SignAlingThres = 4000
 GeoFilter = 'USAC_H'
 
-
-###  Define models to treat
-geoestiMODEL_NAME = 'DA_Pts_dropout'
-geoestiweights2load = 'model-data/model.'+geoestiMODEL_NAME+'_L1_75.hdf5'
-geoesti_dropout = create_model(tuple([60,60,2]), tuple([16]), model_name = geoestiMODEL_NAME, Norm='L1', resume = True, ResumeFile = geoestiweights2load).get_layer("GeometricEstimator")
+LOCATE_model = LOCATEmodel.get_layer("GeometricEstimator")
 
 
 def WriteImgKeys(img, keys, pathname, Flag=2):
@@ -342,7 +338,7 @@ def ComputeModelDataOnSimus(model, inputs, folder, WasNetAffine = True):
         WriteImgKeys(bP[i,:,:,1]*255, [], 'p2/'+str(pid)+'.png' )
         GenAffineMapsImage(GTAivec, np.concatenate((vecE[8:16],vecE[0:8])), folder+'/map_'+str(pid)+'.png', GA, SP)        
         WriteImgKeys(DrawinP2(bP[i,:,:,0], bP[i,:,:,1], GTAi), [], folder+'/GT_'+str(pid)+'.png' )
-        WriteImgKeys(DrawinP2(bP[i,:,:,0], bP[i,:,:,1], Ai), [], folder+'/GeoEsti_dropout_8pts_'+str(pid)+'.png' )
+        WriteImgKeys(DrawinP2(bP[i,:,:,0], bP[i,:,:,1], Ai), [], folder+'/LOCATE_model_'+str(pid)+'.png' )
         
         pid += 1
 
@@ -391,7 +387,7 @@ if True:
     ### Compute all necessary data on defined models
     info_all = []
 
-    diffs_wrt_GT, score_TransitionTilt = ComputeModelData(geoesti_dropout, inputs, WasNetAffine = False)
+    diffs_wrt_GT, score_TransitionTilt = ComputeModelData(LOCATE_model, inputs, WasNetAffine = False)
     info_all.append([diffs_wrt_GT, score_TransitionTilt, 'LOCATE'])
 
     diffs_wrt_GT, score_TransitionTilt = ComputeAffNetData(inputs)
@@ -408,7 +404,7 @@ if True:
 if False:
     GAval = GenAffine("./imgs-val/", save_path = "./db-gen-val-75/")
     for d in affine_generator(GAval, batch_num=32):
-        ComputeModelDataOnSimus(geoesti_dropout, d[0], folder='LOCATE', WasNetAffine = False)
+        ComputeModelDataOnSimus(LOCATE_model, d[0], folder='LOCATE', WasNetAffine = False)
         ComputeAffnetDataOnSimus( d[0], folder='Affnet')
         break
 

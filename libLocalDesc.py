@@ -26,13 +26,13 @@ graph = tf.get_default_graph()
 vgg_input_shape = tuple([60,60]) + tuple([1])
 MODEL_NAME = 'AID_simCos_BigDesc_dropout'
 weights2load = 'model-data/model.'+MODEL_NAME+'_75.hdf5'
-train_model, sim_type = create_model(vgg_input_shape, None, model_name = MODEL_NAME, Norm=None, resume = True, ResumeFile = weights2load)
-train_model.trainable = False
+BigAIDmodel, sim_type = create_model(vgg_input_shape, None, model_name = MODEL_NAME, Norm=None, resume = True, ResumeFile = weights2load)
+BigAIDmodel.trainable = False
 
 geoestiMODEL_NAME = 'DA_Pts_dropout'
 geoestiweights2load = 'model-data/model.'+geoestiMODEL_NAME+'_L1_75.hdf5'
-train_geoesti_model = create_model(tuple([60,60,2]), tuple([16]), model_name = geoestiMODEL_NAME, Norm='L1', resume = True, ResumeFile = geoestiweights2load)
-train_geoesti_model.trainable = False
+LOCATEmodel = create_model(tuple([60,60,2]), tuple([16]), model_name = geoestiMODEL_NAME, Norm='L1', resume = True, ResumeFile = geoestiweights2load)
+LOCATEmodel.trainable = False
 
 import sys
 sys.path.append("hesaffnet")
@@ -112,7 +112,7 @@ def GrowMatches(KPlist1, pyr1, KPlist2, pyr2, Qmap, growed_matches, growing_matc
             emb_1, bP_Alist1 = AffNetHardNet_describe(np.expand_dims(np.array(patches1),axis=3))
             emb_2, bP_Alist2 = AffNetHardNet_describe(np.expand_dims(np.array(patches2),axis=3))
     else:    
-        bEsti =train_geoesti_model.layers[2].predict(bP)
+        bEsti =LOCATEmodel.layers[2].predict(bP)
     GA = GenAffine("", DryRun=True)
     lda = CPPbridge('./build/libDA.so')
 
@@ -175,14 +175,14 @@ def GrowMatches(KPlist1, pyr1, KPlist2, pyr2, Qmap, growed_matches, growing_matc
         bP = np.zeros( shape = tuple([len(newpatches1)])+tuple(np.shape(newpatches1[0]))+tuple([1]), dtype=np.float32)
         for k in range(0,len(newpatches1)):
             bP[k,:,:,0] = newpatches1[k][:,:]/255.0
-        emb_1 = train_model.get_layer("aff_desc").predict(bP)
+        emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
 
         bP = np.zeros( shape=tuple([len(newpatches2)])+tuple(np.shape(newpatches2[0]))+tuple([1]), dtype=np.float32)
         for k in range(0,len(newpatches2)):
             bP[k,:,:,0] = newpatches2[k][:,:]/255.0
-        emb_2 = train_model.get_layer("aff_desc").predict(bP)
+        emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
 
-        simis = train_model.get_layer("sim").predict([emb_1, emb_2])
+        simis = BigAIDmodel.get_layer("sim").predict([emb_1, emb_2])
         
         for m in range(0,len(keys2seek[n])):
             # WriteImgKeys(patches1[idx1], keys4p1, 'p1init/'+str(n)+'.'+str(m)+'.png' )
@@ -538,7 +538,7 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = math.inf, Simi='SignProx', 
     global tfsession
     with graph.as_default(): 
         with tfsession.as_default():       
-            emb_1 = train_model.get_layer("aff_desc").predict(bP)
+            emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
             emb_1 = CreateSubDesc(emb_1, coef=1.0, NewDescRadius=descRadius)
 
     bP = np.zeros( shape = tuple([patches2.shape[0], patches2.shape[2], patches2.shape[3], 1]), dtype=np.float32)
@@ -546,7 +546,7 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = math.inf, Simi='SignProx', 
         bP[k,:,:,0] = patches2[k,0,:,:]/255.0
     with graph.as_default(): 
         with tfsession.as_default():    
-            emb_2 = train_model.get_layer("aff_desc").predict(bP)
+            emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
             emb_2 = CreateSubDesc(emb_2, coef=-1.0, NewDescRadius=descRadius)
     
     ET_KP = time.time() - start_time
@@ -620,7 +620,7 @@ def siftAID(img1,img2, MatchingThres = math.inf, Simi='SignProx', knn_num = 1, G
     global tfsession
     with graph.as_default(): 
         with tfsession.as_default():       
-            emb_1 = train_model.get_layer("aff_desc").predict(bP)
+            emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
             emb_1 = CreateSubDesc(emb_1, coef=1.0, NewDescRadius=descRadius)
 
     bP = np.zeros( shape=tuple([len(patches2)])+tuple(np.shape(patches2[0]))+tuple([1]), dtype=np.float32)
@@ -628,7 +628,7 @@ def siftAID(img1,img2, MatchingThres = math.inf, Simi='SignProx', knn_num = 1, G
         bP[k,:,:,0] = patches2[k][:,:]/255.0
     with graph.as_default(): 
         with tfsession.as_default():
-            emb_2 = train_model.get_layer("aff_desc").predict(bP)
+            emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
             emb_2 = CreateSubDesc(emb_2, coef=-1.0, NewDescRadius=descRadius)
     
     ET_KP = time.time() - start_time

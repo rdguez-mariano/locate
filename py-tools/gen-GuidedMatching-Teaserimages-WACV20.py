@@ -48,13 +48,13 @@ img1 = cv2.drawMatches(p.query, kplistq,p.target, kplistt, cmT, None,flags=2,mat
 cv2.imwrite('./temp/siftaid_cmT_matches.png',img1)
 
 
-total, good_HC, kplistq, kplistt, H, ET_KP, ET_M, _ = Enhanced_siftAID(p.query,p.target, MatchingThres = 4000, Simi='SignProx', knn_num = 1, GFilter='USAC_H', RegionGrowingIters=4)
+total, good_HC, kplistq, kplistt, H, ET_KP, ET_M = siftAID(p.query,p.target, MatchingThres = 4000, Simi='SignProx', knn_num = 1, GFilter='USAC_H', RegionGrowingIters=4)
 cmHC, _ = CorrectMatches(good_HC,kplistq, kplistt, p.Tmatrix )
 cmT, _ = CorrectMatches(total,kplistq, kplistt, p.Tmatrix )
 
 img1 = cv2.drawMatches(p.query, kplistq,p.target, kplistt, total, None,flags=2,matchColor=(0, 255, 0))
-cv2.imwrite('./temp/Esiftaid_total_matches.png',img1)
+cv2.imwrite('./temp/Guided_siftaid_total_matches.png',img1)
 img1 = cv2.drawMatches(p.query, kplistq,p.target, kplistt, cmHC, None,flags=2,matchColor=(0, 255, 0))
-cv2.imwrite('./temp/Esiftaid_cmHC_matches.png',img1)
+cv2.imwrite('./temp/Guided_siftaid_cmHC_matches.png',img1)
 img1 = cv2.drawMatches(p.query, kplistq,p.target, kplistt, cmT, None,flags=2,matchColor=(0, 255, 0))
-cv2.imwrite('./temp/Esiftaid_cmT_matches.png',img1)
+cv2.imwrite('./temp/Guided_siftaid_cmT_matches.png',img1)

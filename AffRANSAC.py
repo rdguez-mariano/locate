@@ -208,7 +208,7 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
         if Aq2t is None:
             global graph
             with graph.as_default():
-                bEsti =train_geoesti_model.layers[2].predict(bP)
+                bEsti =LOCATEmodel.layers[2].predict(bP)
         GA = GenAffine("", DryRun=True)
         
         if Aq2t is None:
