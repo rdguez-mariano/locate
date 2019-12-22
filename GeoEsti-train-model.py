@@ -1,7 +1,7 @@
 MODEL_NAME = 'DA_Pts_dropout'
 NORM = 'L1'
 DegMax = 75
-Debug = True
+Debug = False
 Parallel = False
 ConstrastSimu = True # if True it randomly simulates contrast changes for each patch
 DoBigEpochs = True
@@ -119,10 +119,11 @@ def affine_generator(GA, batch_num=32, Force2Gen=False, ForceFast=False):
 
 
 #  VGG like network
-from keras import layers
-from keras.models import Model
-import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session
+from tensorflow.compat.v1.keras import layers
+from tensorflow.compat.v1.keras.models import Model
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1.keras.backend import set_session
+
 config = tf.ConfigProto(allow_soft_placement=True)
 #, device_count = {'CPU' : 1, 'GPU' : 1})
 config.gpu_options.per_process_gpu_memory_fraction = 0.3
@@ -132,7 +133,7 @@ set_session(tf.Session(config=config))
 from models import *
 vgg_input_shape = np.shape(stacked_patches)
 vgg_output_shape = np.shape(groundtruth_pts)
-train_model = create_model(vgg_input_shape, vgg_output_shape, model_name = MODEL_NAME, Norm=NORM, resume = False)
+train_model = create_model(vgg_input_shape, vgg_output_shape, model_name = MODEL_NAME, Norm=NORM, resume = True)
 
 
 
@@ -143,7 +144,7 @@ import scipy.special
 import random
 from sklearn.manifold import TSNE, MDS
 from sklearn.metrics import f1_score, accuracy_score
-from keras.callbacks import TerminateOnNaN, ModelCheckpoint, TensorBoard, LambdaCallback, ReduceLROnPlateau
+from tensorflow.compat.v1.keras.callbacks import TerminateOnNaN, ModelCheckpoint, TensorBoard, LambdaCallback, ReduceLROnPlateau
 import os
 from shutil import copyfile
 import matplotlib.pyplot as plt
@@ -351,7 +352,7 @@ tensorboard = TensorBoard(log_dir=log_path,
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=25, verbose=1, mode='auto', cooldown=0, min_lr=0)
 
-import keras
+import tensorflow.compat.v1.keras as keras
 train_model.compile(loss=None, optimizer=keras.optimizers.Adam(lr=0.00001))
 # loss_model_saver =  ModelCheckpoint(log_path + "/model.ckpt.min_loss.{epoch:04d}-{loss:.6f}.hdf5", monitor='loss', period=1, save_best_only=True)
 loss_model_saver =  ModelCheckpoint(log_path + "/model.ckpt.min_loss.hdf5", monitor='loss', mode='min', period=1, save_best_only=True)
