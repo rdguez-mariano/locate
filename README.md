@@ -14,25 +14,13 @@ conda create --name locate python=3.5.4
 source activate locate
 
 pip install --upgrade pip
-pip install -r requirements.txt --ignore-installed
+pip install -r requirements.txt
 ```
 
 ##### Compiling the C++ library
 
 ```bash
 mkdir -p build && cd build && cmake .. && make
-```
-
-##### Deactivate the environment
-
-```bash
-conda deactivate
-```
-
-##### Delete the environment
-
-```bash
-conda-env remove -n locate
 ```
 
 ##### Possible install errors
@@ -42,6 +30,16 @@ If AttributeError: module 'cv2.cv2' has no attribute 'xfeatures2d' reinstall ope
 ```bash
 pip uninstall opencv-contrib-python
 pip install opencv-python==3.4.2.16
+```
+
+#### Uninstall the LOCATE environment
+
+If you want to remove this project from your computer just do:
+
+```bash
+conda deactivate
+conda-env remove -n locate
+rm -R /path/to/locate
 ```
 
 ## Reproducing results from the [companion paper](https://rdguez-mariano.github.io/pages/locate)
@@ -146,9 +144,10 @@ More available configurations can be found in [gen-tables-WACV20.py](py-tools/ge
 
 ## Using LOCATE for guided matching
 
-This code for guided matching is far from optimised. It was rather used for academic purposes. Our lazy implementation can be drastically improved to obtain better time performances.
+This source code for guided matching is far from optimised. It was rather used for academic purposes. Our lazy implementation can be drastically improved to obtain better time performances.
 
-Let's see an example of using SIFT-AID with LOCATE guided matching (4 iterations).
+Let's launch SIFT-AID with LOCATE guided matching (4 iterations).
+
 ```python
 import cv2
 from libLocalDesc import *

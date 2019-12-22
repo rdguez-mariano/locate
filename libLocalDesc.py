@@ -8,14 +8,13 @@ import cv2
 from matplotlib import pyplot as plt
 from library import *
 import time
-from keras import layers
-from keras.models import Model
-import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto(allow_soft_placement=True)
-
+from tensorflow.compat.v1.keras import layers
+from tensorflow.compat.v1.keras.models import Model
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1.keras.backend import set_session
 from models import *
-from keras.models import load_model
+
+config = tf.ConfigProto(allow_soft_placement=True)
 #, device_count = {'CPU' : 1, 'GPU' : 1})
 config.gpu_options.per_process_gpu_memory_fraction = 0.1
 tfsession = tf.Session(config=config)

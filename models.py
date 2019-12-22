@@ -1,8 +1,7 @@
-#  VGG like network
-from keras import layers
-from keras.models import Model
-import tensorflow as tf
-from keras import backend as K
+from tensorflow.compat.v1.keras import layers
+from tensorflow.compat.v1.keras.models import Model
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1.keras import backend as K
 
 
 def create_model(input_shape, output_shape, model_name = 'DA_Pts_base', Norm='L2', resume = True, ResumeFile = ''):
@@ -11,7 +10,7 @@ def create_model(input_shape, output_shape, model_name = 'DA_Pts_base', Norm='L2
         path2weights = 'model-data/model.DA_Pts_base_L1_60.hdf5'
     elif model_name == 'DA_Pts_dropout':
         train_model = GeoEsti_CreateModel(input_shape, output_shape, Spatial_Dropout=True, Norm=Norm)
-        path2weights = 'model-data/model.DA_Pts_dropout_L1_60.hdf5'
+        path2weights = 'model-data/model.DA_Pts_dropout_L1_75.hdf5'
     elif model_name == 'DA_Pts_2xNeurons':
         train_model = GeoEsti_CreateModel(input_shape, output_shape, B5_FC1_neurons = 2048, Norm=Norm)
         path2weights = 'model-data/model.Pts_2xNeurons_L2.hdf5'
@@ -169,7 +168,7 @@ def CreateGeometricModel(input_shape,Spatial_Dropout,BN, trainit = True):
     if BN:
         x = layers.BatchNormalization(name='block4_BN2', trainable=trainitBN)(x)
     if Spatial_Dropout:
-        x = layers.SpatialDropout2D(p= 0.5,name='block4_Dropout1')(x)
+        x = layers.SpatialDropout2D(rate=0.5,name='block4_Dropout1')(x)
     x = layers.Activation('relu', name='block4_relu2')(x)
     x = layers.Flatten(name='block5_flatten1')(x)
 
@@ -364,7 +363,7 @@ def CreateDescModel(input_shape, alpha_hinge, Spatial_Dropout, BN, B5_FC1_neuron
         x = layers.BatchNormalization(name='block4_BN2')(x)
 
     if Spatial_Dropout:
-        x = layers.SpatialDropout2D(p= 0.5,name='block4_Dropout1')(x)
+        x = layers.SpatialDropout2D(rate=0.5,name='block4_Dropout1')(x)
 
     if BigDesc==False:
         x = layers.Activation('relu', name='block4_relu2')(x)
