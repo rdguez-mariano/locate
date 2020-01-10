@@ -153,13 +153,13 @@ def AffNetHardNet_describeFromKeys(img_np, KPlist):
 def HessAffNetHardNet_Detect(img, Nfeatures=500):
     var_image = torch.autograd.Variable(torch.from_numpy(img.astype(np.float32)), volatile = True)
     var_image_reshape = var_image.view(1, 1, var_image.size(0),var_image.size(1))
-    HessianAffine = ScaleSpaceAffinePatchExtractor( mrSize = 5.192, num_features = Nfeatures, border = 15, num_Baum_iters = 1,  AffNet = AffNetPix)
+    HessianAffine = ScaleSpaceAffinePatchExtractor( mrSize = 5.192, num_features = Nfeatures, border = 5, num_Baum_iters = 1,  AffNet = AffNetPix)
     if USE_CUDA:
         HessianAffine = HessianAffine.cuda()
         var_image_reshape = var_image_reshape.cuda()
         
     with torch.no_grad():
-        LAFs, responses = HessianAffine(var_image_reshape)
+        LAFs, responses = HessianAffine(var_image_reshape, do_ori = True)
 
     # these are my affine maps to work with
     Alist = convertLAFs_to_A23format(LAFs).cpu().numpy().astype(np.float32)
@@ -172,13 +172,13 @@ def HessAffNetHardNet_Detect(img, Nfeatures=500):
 def HessAffNetHardNet_DetectAndDescribe(img, Nfeatures=500):
     var_image = torch.autograd.Variable(torch.from_numpy(img.astype(np.float32)), volatile = True)
     var_image_reshape = var_image.view(1, 1, var_image.size(0),var_image.size(1))
-    HessianAffine = ScaleSpaceAffinePatchExtractor( mrSize = 5.192, num_features = Nfeatures, border = 15, num_Baum_iters = 1,  AffNet = AffNetPix)
+    HessianAffine = ScaleSpaceAffinePatchExtractor( mrSize = 5.192, num_features = Nfeatures, border = 5, num_Baum_iters = 1,  AffNet = AffNetPix)
     if USE_CUDA:
         HessianAffine = HessianAffine.cuda()
         var_image_reshape = var_image_reshape.cuda()
         
     with torch.no_grad():
-        LAFs, responses = HessianAffine(var_image_reshape)
+        LAFs, responses = HessianAffine(var_image_reshape, do_ori = True)
         patches = HessianAffine.extract_patches_from_pyr(LAFs, PS = 32)
         descriptors = HardNetDescriptor(patches)
 
@@ -198,7 +198,7 @@ def HessAff_Detect(img, PatchSize=60, Nfeatures=500):
     #     var_image_reshape = var_image_reshape.cuda()
         
     with torch.no_grad():
-        LAFs, responses = HessianAffine(var_image_reshape)
+        LAFs, responses = HessianAffine(var_image_reshape, do_ori = True)
         patches = HessianAffine.extract_patches_from_pyr(LAFs, PS = PatchSize).cpu()
 
     # these are my affine maps to work with
