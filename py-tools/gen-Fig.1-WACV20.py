@@ -43,7 +43,7 @@ def batch_hamming(a,b):
         return res
 
 
-def WriteTangentsInTarget(img1, img2, pxl_radius = 20):
+def WriteTangentsInTarget(img1, img2, pxl_radius = 20, skipBlurryPatches=True):
     im1 = img1.copy()
 
     h1, w1 = img1.shape[:2]
@@ -95,7 +95,7 @@ def WriteTangentsInTarget(img1, img2, pxl_radius = 20):
     for n in range(len(cvkeys1)):
         o1, l1, _ = unpackSIFTOctave(cvkeys1[n])
         o2, l2, _ = unpackSIFTOctave(cvkeys2[n])
-        if o1>-1 or o2>-1:
+        if skipBlurryPatches and (o1>-1 or o2>-1):
             continue
         
         kps1.append( cvkeys1[n] )
@@ -131,6 +131,10 @@ def WriteTangentsInTarget(img1, img2, pxl_radius = 20):
     backimg = 0.5*img2
     backimg[masks>0] = 0.0
     masks[masks==0] = 1.0
+
+    img = np.sum(imgs,axis=0)/masks
+    WriteImgKeys(img, [], 'affineReconstruction.png' )
+
     img = np.sum(imgs,axis=0)/masks + backimg
     for n in range(len(cornersT)):
         pts = np.array([np.array(kp.pt) for kp in cornersT[n]], np.int32)
@@ -152,3 +156,4 @@ img1 = cv2.cvtColor(cv2.imread('./acc-test/adam.1.png'),cv2.COLOR_BGR2GRAY) # qu
 img2 = cv2.cvtColor(cv2.imread('./acc-test/adam.2.png'),cv2.COLOR_BGR2GRAY) # queryImage
 
 WriteTangentsInTarget(img1, img2)
+# WriteTangentsInTarget(img1, img2, skipBlurryPatches=False)
