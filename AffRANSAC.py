@@ -132,8 +132,8 @@ def Look4Inliers(matches,kplistq, kplistt, H, Affnetdecomp=[],  thres = 24):
                 goodM.append(m)
                 AvDist += thisdist
             elif len(Affnetdecomp)>0 and thisdist <= thres:
-                avecnet = Affnetdecomp[i][0:4]
-                avec = affine_decomp(FirstOrderApprox_Homography(H,kplistt[m.trainIdx].pt+tuple([1])), doAssert=False)[0:4]
+                avecnet = Affnetdecomp[i][0:4]                
+                avec = affine_decomp(FirstOrderApprox_Homography(H,kplistq[m.queryIdx].pt+tuple([1])), doAssert=False)[0:4]
 
                 Affdiff = [ avec[0]/avecnet[0] if avec[0]>avecnet[0] else avecnet[0]/avec[0], 
                             AngleDiff(avec[1],avecnet[1],InRad=True), 
