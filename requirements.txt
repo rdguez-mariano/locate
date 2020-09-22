@@ -16,7 +16,7 @@ opencv-python==3.4.2.17
 opencv-contrib-python==3.4.2.17
 scikit-learn==0.19.1
 scipy==1.4.1
-bleach==1.5.0
+bleach==3.1.4
 tensorboard==1.15.0
 tensorflow-estimator==1.15.1
 tensorflow-gpu==1.15.0
