@@ -24,17 +24,18 @@ graph = tf.get_default_graph()
 #  VGG like network
 vgg_input_shape = tuple([60,60]) + tuple([1])
 MODEL_NAME = 'AID_simCos_BigDesc_dropout'
-weights2load = 'model-data/model.'+MODEL_NAME+'_75.hdf5'
+weights2load = opt.bindir+'model-data/model.'+MODEL_NAME+'_75.hdf5'
 BigAIDmodel, sim_type = create_model(vgg_input_shape, None, model_name = MODEL_NAME, Norm=None, resume = True, ResumeFile = weights2load)
 BigAIDmodel.trainable = False
 
 geoestiMODEL_NAME = 'DA_Pts_dropout'
-geoestiweights2load = 'model-data/model.'+geoestiMODEL_NAME+'_L1_75.hdf5'
+geoestiweights2load = opt.bindir+'model-data/model.'+geoestiMODEL_NAME+'_L1_75.hdf5'
 LOCATEmodel = create_model(tuple([60,60,2]), tuple([16]), model_name = geoestiMODEL_NAME, Norm='L1', resume = True, ResumeFile = geoestiweights2load)
 LOCATEmodel.trainable = False
 
 import sys
-sys.path.append("hesaffnet")
+# sys.path.append("hesaffnet")
+sys.path.append(opt.bindir+"hesaffnet")
 from hesaffnet import *
 
 
@@ -113,14 +114,14 @@ def GrowMatches(KPlist1, pyr1, KPlist2, pyr2, Qmap, growed_matches, growing_matc
     else:    
         bEsti =LOCATEmodel.layers[2].predict(bP)
     GA = GenAffine("", DryRun=True)
-    lda = CPPbridge('./build/libDA.so')
+    lda = CPPbridge(opt.bindir+'libDA.so')
 
     def WriteImgKeys(img, keys, pathname):
         colors=( (0, 0, 255), (0, 255, 0), (255, 0, 0), (255, 255, 0), (0, 255, 255) )
         patch = cv2.cvtColor( img.astype(np.uint8), cv2.COLOR_GRAY2RGB )
         for n in range(np.min([len(colors),len(keys)])):
             patch=cv2.drawKeypoints(patch,keys[n:n+1],patch, color=colors[n] ,flags=0)
-        cv2.imwrite('temp/'+pathname,patch)
+        cv2.imwrite(opt.workdir+''+pathname,patch)
 
     rgrowing_Matches = []
     for n in range(0,len(growing_matches)):
@@ -207,7 +208,7 @@ def GrowMatches(KPlist1, pyr1, KPlist2, pyr2, Qmap, growed_matches, growing_matc
 
 
 import sklearn.preprocessing
-def RootSIFT(img1,img2, MatchingThres = 0, knn_num = 2, Rooted = True, GFilter='ORSA_H', Visual=False, EuPrecision=24):
+def RootSIFT(img1,img2, MatchingThres = opt.rootsift_thres, knn_num = 2, Rooted = True, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24):
     start_time = time.time()
     KPlist1, sift_des1 = ComputeSIFTKeypoints(img1, Desc = True)
     KPlist2, sift_des2 = ComputeSIFTKeypoints(img2, Desc = True)
@@ -229,7 +230,7 @@ def RootSIFT(img1,img2, MatchingThres = 0, knn_num = 2, Rooted = True, GFilter='
     ET_M = time.time() - start_time
 
     # Apply ratio test
-    lda = CPPbridge('./build/libDA.so')
+    lda = CPPbridge(opt.bindir+'libDA.so')
     sift_all = []
     if knn_num==2:
         for m,n in sift_matches:
@@ -249,15 +250,15 @@ def RootSIFT(img1,img2, MatchingThres = 0, knn_num = 2, Rooted = True, GFilter='
         sift_consensus, H_sift = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, sift_all, Filter=GFilter, precision=EuPrecision)
 
     if Visual:
-        img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_all, None,flags=2)
-        cv2.imwrite('./temp/SIFTmatches.png',img4)
+        # img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_all, None,flags=2)
+        # cv2.imwrite(opt.workdir+'SIFTmatches.png',img4)
         img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_consensus, None,flags=2)
-        cv2.imwrite('./temp/SIFT_homography_matches.png',img4)
+        cv2.imwrite(opt.workdir+'matches.png',img4)
 
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
 
-def HessAffNet_HardNet(img1,img2, MatchingThres = 0.8, Ndesc=500, GFilter='ORSA_H', Visual=False, EuPrecision=24):
+def HessAffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24):
     start_time = time.time()
     KPlist1, Patches1, descriptors1, Alist1, Score1 = HessAffNetHardNet_DetectAndDescribe(img1, Nfeatures=Ndesc)
     KPlist2, Patches2, descriptors2, Alist2, Score2 = HessAffNetHardNet_DetectAndDescribe(img2, Nfeatures=Ndesc)
@@ -284,7 +285,7 @@ def HessAffNet_HardNet(img1,img2, MatchingThres = 0.8, Ndesc=500, GFilter='ORSA_
         from AffRANSAC import Aff_RANSAC_H
         _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t_list)
     else:
-        lda = CPPbridge('./build/libDA.so')
+        lda = CPPbridge(opt.bindir+'libDA.so')
         sift_consensus, H_sift = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, sift_all, Filter=GFilter, precision=EuPrecision)
         lda.DestroyMatcher()
 
@@ -311,15 +312,15 @@ def HessAffNet_HardNet(img1,img2, MatchingThres = 0.8, Ndesc=500, GFilter='ORSA_
     #     n=n+1
 
     if Visual:
-        img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_all, None,flags=2)
-        cv2.imwrite('./temp/Affnet_matches.png',img4)
+        # img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_all, None,flags=2)
+        # cv2.imwrite(opt.workdir+'Affnet_matches.png',img4)
         img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_consensus, None,flags=2)
-        cv2.imwrite('./temp/Affnet_homography_matches.png',img4)
+        cv2.imwrite(opt.workdir+'matches.png',img4)
 
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
 
-def SIFT_AffNet_HardNet(img1,img2, MatchingThres = 0.8, knn_num = 2, GFilter='ORSA_H', Visual=False, EuPrecision=24):
+def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 2, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24):
     # find the keypoints with SIFT
     start_time = time.time()
     KPlist1, sift_des1 = ComputeSIFTKeypoints(img1, Desc = True)
@@ -354,7 +355,7 @@ def SIFT_AffNet_HardNet(img1,img2, MatchingThres = 0.8, knn_num = 2, GFilter='OR
     ET_M = time.time() - start_time
 
 
-    lda = CPPbridge('./build/libDA.so')
+    lda = CPPbridge(opt.bindir+'libDA.so')
     # Apply ratio test
     sift_all = []
     if knn_num==2:
@@ -410,16 +411,16 @@ def SIFT_AffNet_HardNet(img1,img2, MatchingThres = 0.8, knn_num = 2, GFilter='OR
     #     n=n+1
 
     if Visual:
-        img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_all, None,flags=2)
-        cv2.imwrite('./temp/SIFT_Affnet_matches.png',img4)
+        # img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_all, None,flags=2)
+        # cv2.imwrite(opt.workdir+'SIFT_Affnet_matches.png',img4)
         img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_consensus, None,flags=2)
-        cv2.imwrite('./temp/SIFT_Affnet_homography_matches.png',img4)
+        cv2.imwrite(opt.workdir+'matches.png',img4)
     lda.DestroyMatcher()
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
 
-def HessianLaplaceRootSIFT(img1,img2, MatchingThres = 0, Ndesc=500, knn_num = 2, Rooted = True, GFilter='ORSA_H', Visual=False, EuPrecision=24):
-    lda = CPPbridge('./build/libDA.so')
+def HessianLaplaceRootSIFT(img1,img2, MatchingThres = opt.rootsift_thres, Ndesc=500, knn_num = 2, Rooted = True, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24):
+    lda = CPPbridge(opt.bindir+'libDA.so')
     start_time = time.time()
     lda.CreateMatcher(128, k = knn_num, sim_thres = MatchingThres)
     
@@ -506,15 +507,15 @@ def HessianLaplaceRootSIFT(img1,img2, MatchingThres = 0, Ndesc=500, knn_num = 2,
     #     n=n+1
 
     if Visual:
-        img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_all, None,flags=2)
-        cv2.imwrite('./temp/HessLaplaceSIFTmatches.png',img4)
+        # img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_all, None,flags=2)
+        # cv2.imwrite(opt.workdir+'HessLaplaceSIFTmatches.png',img4)
         img4 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,sift_consensus, None,flags=2)
-        cv2.imwrite('./temp/HessLaplaceSIFT_homography_matches.png',img4)
+        cv2.imwrite(opt.workdir+'matches.png',img4)
     lda.DestroyMatcher()
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
     
-def HessAffAID(img1,img2, Ndesc=500, MatchingThres = math.inf, Simi='SignProx', knn_num = 1, GFilter='ORSA_H', Visual=False, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf ):
+def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num = 1, GFilter=opt.gfilter, Visual=opt.visual, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf ):
     if Simi=='CosProx':
         FastCode = 0
     elif Simi=='SignProx':
@@ -551,7 +552,7 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = math.inf, Simi='SignProx', 
     ET_KP = time.time() - start_time
 
     desc_dim = np.shape(emb_1)[1]
-    lda = CPPbridge('./build/libDA.so')
+    lda = CPPbridge(opt.bindir+'libDA.so')
     lda.CreateMatcher(desc_dim, k = knn_num, sim_thres = MatchingThres)
     start_time = time.time()
     lda.KnnMatch(KPlist1,emb_1, KPlist2,emb_2,FastCode)    
@@ -571,19 +572,19 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = math.inf, Simi='SignProx', 
 
     if Visual:
         # img3 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,AID_good, None,flags=2)
-        # cv2.imwrite('./temp/AID_total_matches.png',img3)
+        # cv2.imwrite(opt.workdir+'AID_total_matches.png',img3)
         img3 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,AID_consensus, None,flags=2)
-        cv2.imwrite('./temp/HessAffAID_homography_matches.png',img3)
-        h, w = img2.shape[:2]
-        warp_AID = cv2.warpPerspective(img1, H_AID,(w, h))
-        warp_AID = warp_AID
-        cv2.imwrite('./temp/HessAffAID_panorama.png',warp_AID)
+        cv2.imwrite(opt.workdir+'matches.png',img3)
+        # h, w = img2.shape[:2]
+        # warp_AID = cv2.warpPerspective(img1, H_AID,(w, h))
+        # warp_AID = warp_AID
+        # cv2.imwrite(opt.workdir+'HessAffAID_panorama.png',warp_AID)
 
     lda.DestroyMatcher()
     return AID_all, AID_consensus, KPlist1, KPlist2, H_AID, ET_KP, ET_M
 
 
-def siftAID(img1,img2, MatchingThres = math.inf, Simi='SignProx', knn_num = 1, GFilter='ORSA_H', Visual=False, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf, RegionGrowingIters=-1 ):
+def siftAID(img1,img2, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num = 1, GFilter=opt.gfilter, Visual=opt.visual, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf, RegionGrowingIters=-1 ):
     if Simi=='CosProx':
         FastCode = 0
     elif Simi=='SignProx':
@@ -633,7 +634,7 @@ def siftAID(img1,img2, MatchingThres = math.inf, Simi='SignProx', knn_num = 1, G
     ET_KP = time.time() - start_time
 
     desc_dim = np.shape(emb_1)[1]
-    lda = CPPbridge('./build/libDA.so')
+    lda = CPPbridge(opt.bindir+'libDA.so')
     lda.CreateMatcher(desc_dim, k = knn_num, sim_thres = MatchingThres)
     start_time = time.time()
     lda.KnnMatch(KPlist1,emb_1, KPlist2,emb_2,FastCode)    
@@ -667,13 +668,13 @@ def siftAID(img1,img2, MatchingThres = math.inf, Simi='SignProx', knn_num = 1, G
 
     if Visual:
         # img3 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,AID_all, None,flags=2)
-        # cv2.imwrite('./temp/AID_total_matches.png',img3)
+        # cv2.imwrite(opt.workdir+'AID_total_matches.png',img3)
         img3 = cv2.drawMatches(img1,KPlist1,img2,KPlist2,AID_consensus, None,flags=2)
-        cv2.imwrite('./temp/siftAID_homography_matches.png',img3)
-        h, w = img2.shape[:2]
-        warp_AID = cv2.warpPerspective(img1, H_AID,(w, h))
-        warp_AID = warp_AID
-        cv2.imwrite('./temp/siftAID_panorama.png',warp_AID)
+        cv2.imwrite(opt.workdir+'matches.png',img3)
+        # h, w = img2.shape[:2]
+        # warp_AID = cv2.warpPerspective(img1, H_AID,(w, h))
+        # warp_AID = warp_AID
+        # cv2.imwrite(opt.workdir+'siftAID_panorama.png',warp_AID)
 
     lda.DestroyMatcher()
     return AID_all, AID_consensus, KPlist1, KPlist2, H_AID, ET_KP, ET_M+ET_G

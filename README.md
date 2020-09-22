@@ -20,7 +20,7 @@ pip install -r requirements.txt
 ##### Compiling the C++ library
 
 ```bash
-mkdir -p build && cd build && cmake .. && make
+mkdir -p build && cd build && cmake .. && make && mv libDA.so ..
 ```
 
 ##### Possible install errors

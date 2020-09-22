@@ -7,9 +7,84 @@ import random
 import psutil
 import ctypes
 from datetime import datetime
+import argparse
 
 MaxSameKP_dist = 5 # pixels
 MaxSameKP_angle = 10 # degrees
+
+class BaseOptions():
+    def __init__(self):
+        """Reset the class; indicates the class hasn't been initailized"""
+        self.initialized = False
+        self.save_dir = './'
+
+    def initialize(self, parser):
+        """Define the common options."""
+        # basic parameters
+        parser.add_argument('--im1', type=str, default='./acc-test/adam.1.png', required=False, help='Path to query image')
+        parser.add_argument('--im2', type=str, default='./acc-test/adam.2.png', required=False, help='Path to target image')
+        
+        parser.add_argument('--gfilter', type=str, default="Aff_H_2", help='Geometric filter to apply: [USAC_H, ORSA_H, USAC_F, ORSA_F, Aff_H_0, Aff_H_1, Aff_H_2, Aff_H-N-0, Aff_H-N-1, Aff_H-N-2]')
+        parser.add_argument('--detector', type=str, default='SIFT', required=False, help='Detector: [ HessAff, SIFT]')
+        parser.add_argument('--descriptor', type=str, default="AID", required=False, help='Descriptor code: [ AID, RootSIFT, HardNet]')
+        parser.add_argument('--aid_thres', type=float, default=4000, help='AID matching threshold')
+        parser.add_argument('--hardnet_thres', type=float, default=0.8, help='Hardnet matching threshold')
+        parser.add_argument('--rootsift_thres', type=float, default=0.8, help='AID matching threshold')
+
+        parser.add_argument('--visual', default= True, action='store_true', help='Visualize output images')
+        parser.add_argument('--verbose', default=False, action='store_true', help='Verbose mode')
+
+        parser.add_argument('--workdir', type=str, default='./temp/', required=False, help='Work dir for output images.')
+        parser.add_argument('--bindir', type=str, default='./', required=False, help='Binaries directory (for IPOL demo).')
+
+        self.initialized = True
+        return parser
+
+    def gather_options(self):
+        """Initialize our parser with basic options (only once).
+        """
+        if not self.initialized:  # check if it has been initialized
+            parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+            parser = self.initialize(parser)
+
+        # get the basic options
+        opt, _ = parser.parse_known_args()
+
+        # save and return the parser
+        self.parser = parser
+        return parser.parse_args()
+
+    def print_options(self, opt):
+        """Print and save options
+        """
+        message = ''
+        message += '----------------- Options ---------------\n'
+        for k, v in sorted(vars(opt).items()):
+            comment = ''
+            default = self.parser.get_default(k)
+            if v != default:
+                comment = '\t[default: %s]' % str(default)
+            message += '{:>25}: {:<30}{}\n'.format(str(k), str(v), comment)
+        message += '----------------- End -------------------'
+        if opt.verbose:
+            print(message)
+
+        # save to the disk
+        expr_dir = self.save_dir
+        file_name = os.path.join(expr_dir, 'opt.txt')
+        with open(file_name, 'wt') as opt_file:
+            opt_file.write(message)
+            opt_file.write('\n')
+
+    def parse(self):
+        """Parse our options."""
+        opt = self.gather_options()
+        self.print_options(opt)
+        self.opt = opt
+        return self.opt
+
+opt = BaseOptions().parse()
+
 
 class ClassSIFTparams():
     def __init__(self, nfeatures = 0, nOctaveLayers = 3, contrastThreshold = 0.04, edgeThreshold = 10, sigma = 1.6, firstOctave = -1, sift_init_sigma = 0.5, graydesc = True):

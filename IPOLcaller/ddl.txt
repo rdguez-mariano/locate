@@ -1,0 +1,135 @@
+{
+    "archive": {
+        "enable_reconstruct": true,
+        "files": {
+            "input_0.png"          : "Query image",
+            "input_1.png"           : "Target image",
+            "matches.png"        : "Matches",
+            "stdout.txt": "Output_details"
+    },
+    "params": [
+      "gfilter",
+"aid_thres",
+"hardnet_thres",
+"detector",
+"descriptor"
+    ]
+    },
+  "build": {
+    "build1": {
+      "url": "http://dev.ipol.im/~rdguez-mariano/fixed_files/locate.tar.gz",
+      "construct": "cd locate && chmod +x IPOLcaller/locate_caller.py && mkdir -p build && cd build && cmake .. && make",
+      "move": "locate/build/libDA.so, locate/hesaffnet, locate/model-data, locate/py-tools, locate/IPOLcaller/locate_caller.py, locate/IPOLcaller/run.sh, locate/AffRANSAC.py, locate/acc_test_library.py, locate/libLocalDesc.py, locate/library.py, locate/models.py",
+      "virtualenv": "locate/IPOLcaller/requirements.txt"
+    }
+  },
+  "general": {
+    "timeout": 300,
+    "demo_title": "LOCATE: A LOCal Affine Transform Estimator",
+    "input_description": [
+      ""
+    ],
+    "param_description": [
+      ""
+    ],
+    "requirements": "DR1",
+    "xlink_article": ""
+  },
+  "inputs": [
+        {
+            "description": "Query image",
+            "dtype": "3x8i",
+            "ext": ".png",
+            "max_pixels": "1000 * 1000",
+            "max_weight": "1024*1024*10",
+            "required": true,
+            "type": "image"
+        },
+        {
+            "description": "Target image",
+            "dtype": "3x8i",
+            "ext": ".png",
+            "max_pixels": "1000 * 1000",
+            "max_weight": "1024*1024*10",
+            "required": false,
+            "type": "image"
+        }
+  ],
+  "params": [
+        {
+            "id": "detector",
+            "label": "<center> Detector </center>",
+            "type": "selection_radio",
+            "values": {
+                "HessAff</br>":"HessAff",
+                "SIFT</br>": "SIFT"
+            },
+            "default_value": "SIFT",
+            "vertical": true
+        },
+        {
+            "id": "descriptor",
+            "label": "<center> Descriptor Network </center>",
+            "type": "selection_radio",
+            "values": {
+                "AID</br>":"AID",
+                "HardNet</br>": "HardNet"
+            },
+            "default_value": "AID",
+            "vertical": true
+        },
+        {
+            "id": "aid_thres",
+            "label": "<p align=\"right\">AID threshold= </p>",
+            "type": "range",
+            "values": {
+                "default": 4000,
+                "max": 6272,
+                "min": 1,
+                "step": 1
+            },
+            "visible": "params.descriptor=='AID'",
+            "vertical": true
+        },
+        {
+            "id": "hardnet_thres",
+            "label": "<p align=\"right\">HardNet threshold= </p>",
+            "type": "range",
+            "values": {
+                "default": 0.8,
+                "max": 1,
+                "min": 0,
+                "step": 0.01
+            },
+            "visible": "params.descriptor=='HardNet'",
+            "vertical": true
+        },
+        {
+            "id": "gfilter",
+            "label": "<center> Homography estimator </center>",
+            "type": "selection_radio",
+            "values": {
+                "RANSAC Vanilla </br>":"Aff_H_0",
+                "RANSAC 2pts (uses LOCATE)</br>": "Aff_H_1",
+                "RANSAC affine (uses LOCATE)</br>": "Aff_H_2"
+            },
+            "default_value": "Aff_H_2",
+            "vertical": true
+        }
+  ],
+  "results": [
+        {
+            "contents": {
+                "Matches": {"img": "matches.png"}
+            },
+            "label": "",
+            "type": "gallery"
+        },
+        {
+            "contents": "stdout.txt", 
+            "label": "<br/><b>Program Output:</b><br/>", 
+            "type": "text_file"
+        }
+  ],
+  "run":  "${bin}/run.sh ${virtualenv} ${demoextras} ${bin} $gfilter $aid_thres $hardnet_thres $detector $descriptor"
+}

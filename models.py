@@ -2,7 +2,7 @@ from tensorflow.compat.v1.keras import layers
 from tensorflow.compat.v1.keras.models import Model
 import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1.keras import backend as K
-
+from library import opt
 
 def create_model(input_shape, output_shape, model_name = 'DA_Pts_base', Norm='L2', resume = True, ResumeFile = ''):
     if model_name == 'DA_Pts_base':
@@ -89,7 +89,8 @@ def create_model(input_shape, output_shape, model_name = 'DA_Pts_base', Norm='L2
         path2weights = ResumeFile
     if resume:
         train_model.load_weights(path2weights)
-        print(path2weights)
+        if opt.verbose:
+            print(path2weights)
     if model_name[0:3] == 'AID' or model_name[0:7] =='GeoSimi' or model_name[0:6] =='DAsimi':
         return train_model, sim_type
     else:
@@ -177,7 +178,7 @@ def CreateGeometricModel(input_shape,Spatial_Dropout,BN, trainit = True):
     return geometric_model
 
 
-def GeoSimi_CreateModel(input_shape, output_shape, alpha_hinge = 0.2, Spatial_Dropout = False, BN = True, B5_FC1_neurons = 1024, similarity = 'simCos', verbose=True,  path2weights_GeoEsti=''):
+def GeoSimi_CreateModel(input_shape, output_shape, alpha_hinge = 0.2, Spatial_Dropout = False, BN = True, B5_FC1_neurons = 1024, similarity = 'simCos', verbose=opt.verbose,  path2weights_GeoEsti=''):
     geometric_model_nontrainable = CreateGeometricModel(input_shape,Spatial_Dropout,BN, trainit=False)
     geo_dim = geometric_model_nontrainable.output_shape[1]
    
@@ -231,7 +232,7 @@ def GeoSimi_CreateModel(input_shape, output_shape, alpha_hinge = 0.2, Spatial_Dr
     return train_model, sim_type
 
 
-def GeoEsti_CreateModel(input_shape, output_shape, Spatial_Dropout = False, BN = True, B5_FC1_neurons = 1024, Norm = 'L2', verbose=True):
+def GeoEsti_CreateModel(input_shape, output_shape, Spatial_Dropout = False, BN = True, B5_FC1_neurons = 1024, Norm = 'L2', verbose=opt.verbose):
     ''' Geometric Estimator Model. 
     '''
     # Estimator Model
@@ -385,7 +386,7 @@ def CreateDescModel(input_shape, alpha_hinge, Spatial_Dropout, BN, B5_FC1_neuron
     return desc_model
 
 
-def AID_CreateModel(input_shape, alpha_hinge = 0.2, Spatial_Dropout = False, BN = True, B5_FC1_neurons = 1024, similarity = 'simCos', desc_dim = 128, desc_between_0_1 = False, BigDesc=False, verbose=True):
+def AID_CreateModel(input_shape, alpha_hinge = 0.2, Spatial_Dropout = False, BN = True, B5_FC1_neurons = 1024, similarity = 'simCos', desc_dim = 128, desc_between_0_1 = False, BigDesc=False, verbose=opt.verbose):
 
     desc_model = CreateDescModel(input_shape, alpha_hinge, Spatial_Dropout, BN, B5_FC1_neurons, desc_dim, desc_between_0_1, BigDesc)
 
@@ -479,7 +480,7 @@ def AID_CreateModel(input_shape, alpha_hinge = 0.2, Spatial_Dropout = False, BN 
 
 
 
-def DAsimi_CreateModel(input_shape, alpha_hinge = 0.1, Spatial_Dropout = False, BN = True, B5_FC1_neurons = 1024, loss = 'hinge', desc_dim = 0, desc_between_0_1 = False, verbose=True):
+def DAsimi_CreateModel(input_shape, alpha_hinge = 0.1, Spatial_Dropout = False, BN = True, B5_FC1_neurons = 1024, loss = 'hinge', desc_dim = 0, desc_between_0_1 = False, verbose=opt.verbose):
 
     desc_model = CreateDescModel(input_shape, alpha_hinge, Spatial_Dropout, BN, B5_FC1_neurons, desc_dim, desc_between_0_1, BigDesc=True)
 
