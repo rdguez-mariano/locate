@@ -57,7 +57,7 @@ from library import SaveImageWithKeys, packSIFTOctave
 import cv2
 
 
-def AffNetHardNet_describe(patches):
+def AffNetHardNet_describe(patches, justAff=False):
     descriptors =  np.zeros( shape = [patches.shape[0], 128], dtype=np.float32)
     HessianAffine = []
     subpatches = torch.autograd.Variable( torch.zeros([len(patches), 1, 32, 32], dtype=torch.float32), volatile = True).view(len(patches), 1, 32, 32)
@@ -95,6 +95,8 @@ def AffNetHardNet_describe(patches):
     LAFs = torch.cat([torch.bmm(A,baseLAFs[:,:,0:2]), baseLAFs[:,:,2:] ], dim =2)
     dLAFs = denormalizeLAFs(LAFs, patch.size(3), patch.size(2))
     Alist = convertLAFs_to_A23format( dLAFs.detach().cpu().numpy().astype(np.float32) )
+    if justAff:
+        return Alist
     for m in range(patches.shape[0]):
        with torch.no_grad():
             patchaff = HessianAffine[m].extract_patches_from_pyr(dLAFs[m,:,:].reshape(1,2,3), PS = 32)
@@ -110,6 +112,18 @@ def AffNetHardNet_describe(patches):
         with torch.no_grad():
             descriptors = HardNetDescriptor(subpatches).detach().cpu().numpy().astype(np.float32)
     return descriptors, Alist
+
+def HardNet_describe(patches):
+    tpatches = torch.from_numpy(patches).permute(0,3,1,2)
+    if USE_CUDA:
+        with torch.no_grad():
+            descriptors = batched_forward(HardNetDescriptor, tpatches.cuda(), 256).cpu().numpy().astype(np.float32)
+    else:
+        with torch.no_grad():
+            descriptors = HardNetDescriptor(tpatches).detach().cpu().numpy().astype(np.float32)
+    Alist = [ np.float32([[1, 0, 0], [0, 1, 0]]) for a in range(len(patches))]
+    return descriptors, Alist
+    
 
 def AffNetHardNet_describeFromKeys(img_np, KPlist):
     img = torch.autograd.Variable(torch.from_numpy(img_np.astype(np.float32)), volatile = True)
@@ -170,10 +184,10 @@ def HessAffNetHardNet_Detect(img, Nfeatures=500):
     return KPlist, Alist, responses
 
 
-def HessAffNetHardNet_DetectAndDescribe(img, Nfeatures=500):
+def HessAffNetHardNet_DetectAndDescribe(img, Nfeatures=500, useAffnet=AffNetPix):
     var_image = torch.autograd.Variable(torch.from_numpy(img.astype(np.float32)), volatile = True)
     var_image_reshape = var_image.view(1, 1, var_image.size(0),var_image.size(1))
-    HessianAffine = ScaleSpaceAffinePatchExtractor( mrSize = 5.192, num_features = Nfeatures, border = 5, num_Baum_iters = 1,  AffNet = AffNetPix)
+    HessianAffine = ScaleSpaceAffinePatchExtractor( mrSize = 5.192, num_features = Nfeatures, border = 5, num_Baum_iters = 1,  AffNet = useAffnet)
     if USE_CUDA:
         HessianAffine = HessianAffine.cuda()
         var_image_reshape = var_image_reshape.cuda()

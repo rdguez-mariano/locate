@@ -258,10 +258,14 @@ def RootSIFT(img1,img2, MatchingThres = opt.rootsift_thres, knn_num = 2, Rooted 
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
 
-def HessAffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24):
+def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24, HessAffNet=True):
     start_time = time.time()
-    KPlist1, Patches1, descriptors1, Alist1, Score1 = HessAffNetHardNet_DetectAndDescribe(img1, Nfeatures=Ndesc)
-    KPlist2, Patches2, descriptors2, Alist2, Score2 = HessAffNetHardNet_DetectAndDescribe(img2, Nfeatures=Ndesc)
+    if HessAffNet:
+        KPlist1, Patches1, descriptors1, Alist1, Score1 = HessAffNetHardNet_DetectAndDescribe(img1, Nfeatures=Ndesc)
+        KPlist2, Patches2, descriptors2, Alist2, Score2 = HessAffNetHardNet_DetectAndDescribe(img2, Nfeatures=Ndesc)
+    else:
+        KPlist1, Patches1, descriptors1, Alist1, Score1 = HessAffNetHardNet_DetectAndDescribe(img1, Nfeatures=Ndesc, useAffnet=None)
+        KPlist2, Patches2, descriptors2, Alist2, Score2 = HessAffNetHardNet_DetectAndDescribe(img2, Nfeatures=Ndesc, useAffnet=None)
     ET_KP = time.time() - start_time
 
     #Bruteforce matching with SNN threshold    
@@ -320,7 +324,7 @@ def HessAffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, 
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
 
-def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 2, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24):
+def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 2, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24, AffNetBeforeDesc=True):
     # find the keypoints with SIFT
     start_time = time.time()
     KPlist1, sift_des1 = ComputeSIFTKeypoints(img1, Desc = True)
@@ -341,12 +345,18 @@ def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 
     bP = np.zeros( shape = tuple([len(patches1)])+tuple(np.shape(patches1[0]))+tuple([1]), dtype=np.float32)
     for k in range(0,len(patches1)):
         bP[k,:,:,0] = patches1[k][:,:]
-    emb_1, bP_Alist1 = AffNetHardNet_describe(bP)
+    if AffNetBeforeDesc:
+        emb_1, bP_Alist1 = AffNetHardNet_describe(bP)
+    else:
+        emb_1, bP_Alist1 = HardNet_describe(bP)
 
     bP = np.zeros( shape=tuple([len(patches2)])+tuple(np.shape(patches2[0]))+tuple([1]), dtype=np.float32)
     for k in range(0,len(patches2)):
         bP[k,:,:,0] = patches2[k][:,:]
-    emb_2, bP_Alist2 = AffNetHardNet_describe(bP)
+    if AffNetBeforeDesc:
+        emb_2, bP_Alist2 = AffNetHardNet_describe(bP)
+    else:
+        emb_2, bP_Alist2 = HardNet_describe(bP)
     ET_KP = time.time() - start_time
 
     bf = cv2.BFMatcher()

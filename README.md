@@ -91,7 +91,7 @@ _, good_HC, _,_,_, ET_KP, ET_M = HessAffAID(img1,img2, MatchingThres = 4000, GFi
 print("Hessaff-AID + RANSAC USAC --> FilteredMatches = %d, KeypointsTime = %3.3f, MatchingTime = %3.3f" %(len(good_HC),ET_KP,ET_M))
 
 # HessAff + Affnet + HardNet + RANSAC_affine with affine maps provided by Affnet
-_, good_HC, _,_,_, ET_KP, ET_M = HessAffNet_HardNet(img1,img2,GFilter='Aff_H-2')
+_, good_HC, _,_,_, ET_KP, ET_M = HessAff_HardNet(img1,img2,GFilter='Aff_H-2',HessAffNet=True)
 print("HessAffnet + RANSAC_affine with Affnet --> FilteredMatches = %d, KeypointsTime = %3.3f, MatchingTime = %3.3f" %(len(good_HC),ET_KP,ET_M))
 
 # SIFT + RootSIFT + ORSA Homography
