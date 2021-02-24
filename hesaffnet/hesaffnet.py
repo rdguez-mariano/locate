@@ -184,7 +184,7 @@ def HessAffNetHardNet_Detect(img, Nfeatures=500):
     return KPlist, Alist, responses
 
 
-def HessAffNetHardNet_DetectAndDescribe(img, Nfeatures=500, useAffnet=AffNetPix):
+def HessAffNetHardNet_DetectAndDescribe(img, PatchSize=60, Nfeatures=500, useAffnet=AffNetPix):
     var_image = torch.autograd.Variable(torch.from_numpy(img.astype(np.float32)), volatile = True)
     var_image_reshape = var_image.view(1, 1, var_image.size(0),var_image.size(1))
     HessianAffine = ScaleSpaceAffinePatchExtractor( mrSize = 5.192, num_features = Nfeatures, border = 5, num_Baum_iters = 1,  AffNet = useAffnet)
@@ -194,7 +194,7 @@ def HessAffNetHardNet_DetectAndDescribe(img, Nfeatures=500, useAffnet=AffNetPix)
         
     with torch.no_grad():
         LAFs, responses = HessianAffine(var_image_reshape, do_ori = True)
-        patches = HessianAffine.extract_patches_from_pyr(LAFs, PS = 32)
+        patches = HessianAffine.extract_patches_from_pyr(LAFs, PS = PatchSize)
         descriptors = HardNetDescriptor(patches)
 
     # these are my affine maps to work with
@@ -202,7 +202,7 @@ def HessAffNetHardNet_DetectAndDescribe(img, Nfeatures=500, useAffnet=AffNetPix)
     KPlist = [cv2.KeyPoint(x=A[0,2], y=A[1,2], _size=10, _angle=0.0,
                                _response=1, _octave=packSIFTOctave(0,0),_class_id=1)
                                 for A in Alist]
-    return KPlist, patches, descriptors, Alist, responses
+    return KPlist, patches.detach().cpu().numpy(), descriptors, Alist, responses
 
 def HessAff_Detect(img, PatchSize=60, Nfeatures=500):
     var_image = torch.autograd.Variable(torch.from_numpy(img.astype(np.float32)), volatile = True)

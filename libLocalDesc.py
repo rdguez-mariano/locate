@@ -258,7 +258,7 @@ def RootSIFT(img1,img2, MatchingThres = opt.rootsift_thres, knn_num = 2, Rooted 
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
 
-def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24, HessAffNet=True):
+def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24, HessAffNet=True, affmaps_method='locate'):
     start_time = time.time()
     if HessAffNet:
         KPlist1, Patches1, descriptors1, Alist1, Score1 = HessAffNetHardNet_DetectAndDescribe(img1, Nfeatures=Ndesc)
@@ -273,12 +273,7 @@ def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFi
     tent_matches_in_1, tent_matches_in_2 = BruteForce4HardNet(descriptors1,descriptors2, SNN_threshold=MatchingThres)
     ET_M = time.time() - start_time
 
-    KPlist1 = [KPlist1[i] for i in tent_matches_in_1]
-    Alist1 = [Alist1[i] for i in tent_matches_in_1]
-    KPlist2 = [KPlist2[i] for i in tent_matches_in_2]
-    Alist2 = [Alist2[i] for i in tent_matches_in_2]
-
-    sift_all = OnlyUniqueMatches( [cv2.DMatch(i, i, 1.0) for i in range(0,len(KPlist1))], KPlist1, KPlist2 )
+    sift_all = OnlyUniqueMatches( [cv2.DMatch(i, j, 1.0) for i,j in zip(tent_matches_in_1,tent_matches_in_2)], KPlist1, KPlist2 )
 
     # Affine maps from query to target
     Aq2t_list = []
@@ -287,7 +282,11 @@ def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFi
 
     if GFilter[0:5] == 'Aff_H':
         from AffRANSAC import Aff_RANSAC_H
-        _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t_list)
+        Alist1 = [cv2.invertAffineTransform(A) for A in Alist1]
+        Alist2 = [cv2.invertAffineTransform(A) for A in Alist2]
+        Aq2t = get_Aq2t(Alist1, Patches1[:,0,:,:], Alist2, Patches2[:,0,:,:], sift_all, method=affmaps_method)
+        # Aq2t = Aq2t_list
+        _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t)
     else:
         lda = CPPbridge(opt.bindir+'libDA.so')
         sift_consensus, H_sift = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, sift_all, Filter=GFilter, precision=EuPrecision)
@@ -324,7 +323,7 @@ def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFi
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
 
-def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 2, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24, AffNetBeforeDesc=True):
+def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 2, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24, AffNetBeforeDesc=True, affmaps_method='locate'):
     # find the keypoints with SIFT
     start_time = time.time()
     KPlist1, sift_des1 = ComputeSIFTKeypoints(img1, Desc = True)
@@ -378,21 +377,11 @@ def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 
                 sift_all.append(m[0])
 
     sift_all = OnlyUniqueMatches(sift_all,KPlist1,KPlist2,SpatialThres=5)      
-    
-    # Affine maps from query to target
-    Aq2t_list = []
-    for m in sift_all:
-        Aq2t = ComposeAffineMaps( bP_Alist2[m.trainIdx], cv2.invertAffineTransform(bP_Alist1[m.queryIdx]) )
-        Aq2t = ComposeAffineMaps( Ai_list2[m.trainIdx], Aq2t )
-        Aq2t = ComposeAffineMaps( Aq2t, A_list1[m.queryIdx] )
-        Aq2t_list.append( Aq2t )
 
     if GFilter[0:5] == 'Aff_H':
         from AffRANSAC import Aff_RANSAC_H
-        if GFilter[0:7] == 'Aff_H-N':
-            _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[8]), precision=EuPrecision, Aq2t=Aq2t_list)
-        else:
-            _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision)
+        Aq2t = get_Aq2t(A_list1, patches1, A_list2, patches2, sift_all, method=affmaps_method)
+        _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t)
     else:
         sift_consensus, H_sift = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, sift_all, Filter=GFilter, precision=EuPrecision)
 
@@ -525,7 +514,7 @@ def HessianLaplaceRootSIFT(img1,img2, MatchingThres = opt.rootsift_thres, Ndesc=
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
     
-def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num = 1, GFilter=opt.gfilter, Visual=opt.visual, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf ):
+def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num = 1, GFilter=opt.gfilter, Visual=opt.visual, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf, affmaps_method = "locate"):
     if Simi=='CosProx':
         FastCode = 0
     elif Simi=='SignProx':
@@ -573,7 +562,8 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignPr
         from AffRANSAC import Aff_RANSAC_H
         AID_all = lda.GetAllMatches()
         AID_all = OnlyUniqueMatches(AID_all,KPlist1,KPlist2,SpatialThres=5)
-        _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision)
+        Aq2t = get_Aq2t(Alist1, patches1[:,0,:,:], Alist2, patches2[:,0,:,:], AID_all, method=affmaps_method)
+        _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t)
     else:
         if GetAllMatches:
             AID_all = lda.GetAllMatches()
@@ -594,7 +584,7 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignPr
     return AID_all, AID_consensus, KPlist1, KPlist2, H_AID, ET_KP, ET_M
 
 
-def siftAID(img1,img2, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num = 1, GFilter=opt.gfilter, Visual=opt.visual, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf, RegionGrowingIters=-1 ):
+def siftAID(img1,img2, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num = 1, GFilter=opt.gfilter, Visual=opt.visual, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf, RegionGrowingIters=-1, affmaps_method = "locate"):
     if Simi=='CosProx':
         FastCode = 0
     elif Simi=='SignProx':
@@ -669,7 +659,8 @@ def siftAID(img1,img2, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num =
     
     if GFilter[0:5] == 'Aff_H':
         from AffRANSAC import Aff_RANSAC_H
-        _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision)
+        Aq2t = get_Aq2t(A_list1, patches1, A_list2, patches2, AID_all, method=affmaps_method)
+        _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t)
     else:
         if RegionGrowingIters>=0:
             AID_consensus, H_AID = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, AID_all, Filter=GFilter, precision=EuPrecision)

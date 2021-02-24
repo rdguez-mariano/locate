@@ -27,6 +27,7 @@ class BaseOptions():
         parser.add_argument('--gfilter', type=str, default="Aff_H_2", help='Geometric filter to apply: [USAC_H, ORSA_H, USAC_F, ORSA_F, Aff_H_0, Aff_H_1, Aff_H_2, Aff_H-N-0, Aff_H-N-1, Aff_H-N-2]')
         parser.add_argument('--detector', type=str, default='SIFT', required=False, help='Detector: [ HessAff, SIFT]')
         parser.add_argument('--descriptor', type=str, default="AID", required=False, help='Descriptor code: [ AID, RootSIFT, HardNet]')
+        parser.add_argument('--affmaps', type=str, default='locate', required=False, help='Affine maps provided by: [ locate, affnet, simple]')
         parser.add_argument('--aid_thres', type=float, default=4000, help='AID matching threshold')
         parser.add_argument('--hardnet_thres', type=float, default=0.8, help='Hardnet matching threshold')
         parser.add_argument('--rootsift_thres', type=float, default=0.8, help='AID matching threshold')
@@ -1573,3 +1574,94 @@ class CPPbridge(object):
 
         self.last_i1_list = i_list.copy()
         self.last_i2_list = j_list.copy()
+
+def get_Aq2t_from_SIFTkeys(cvkeys1, cvkeys2, cvMatches, A_p1_to_p2_list=None):
+    Aq2t = []
+    assert (A_p1_to_p2_list is None or len(cvMatches)==len(A_p1_to_p2_list))
+    for i,m in enumerate(cvMatches):
+        Akp1 = kp2LocalAffine(cvkeys1[m.queryIdx])
+        Akp2 = kp2LocalAffine(cvkeys2[m.trainIdx])
+        if A_p1_to_p2_list is None:
+            A_p1_to_p2 = np.float32([[1, 0, 0], [0, 1, 0]])
+        else:
+            A_p1_to_p2 = A_p1_to_p2_list[i]
+        A_query_to_p2 = ComposeAffineMaps(A_p1_to_p2, Akp1)
+        A_query_to_target = ComposeAffineMaps( cv2.invertAffineTransform(Akp2), A_query_to_p2 )
+        Aq2t.append( A_query_to_target )
+    return Aq2t
+
+def get_Aq2t_from_NormAffmaps(Affmaps1, Affmaps2, cvMatches, A_p1_to_p2_list=None):
+    Aq2t = []
+    assert (A_p1_to_p2_list is None or len(cvMatches)==len(A_p1_to_p2_list))
+    for i,m in enumerate(cvMatches):
+        Akp1 = Affmaps1[m.queryIdx]
+        Akp2 = Affmaps2[m.trainIdx]
+        if A_p1_to_p2_list is None:
+            A_p1_to_p2 = np.float32([[1, 0, 0], [0, 1, 0]])
+        else:
+            A_p1_to_p2 = A_p1_to_p2_list[i]
+        A_query_to_p2 = ComposeAffineMaps(A_p1_to_p2,Akp1)
+        A_query_to_target = ComposeAffineMaps( cv2.invertAffineTransform(Akp2), A_query_to_p2 )
+        Aq2t.append( A_query_to_target )
+    return Aq2t
+
+def get_Aq2t(Alist_q_2_p1, patches1, Alist_t_to_p2, patches2, cvMatches, method='locate'):
+    assert len(Alist_q_2_p1)==len(patches1) and len(Alist_q_2_p1)==len(patches1)
+    Aq2t = []
+    A_p1_to_p2_list = []
+    if method=="simple":
+            A_p1_to_p2 = np.float32([[1, 0, 0], [0, 1, 0]])
+    elif method=="locate":
+        from libLocalDesc import graph, LOCATEmodel
+        GA = GenAffine("", DryRun=True)
+        bP = np.zeros(shape=tuple([len(cvMatches),60,60,2]), dtype = np.float32)
+        for i,m in enumerate(cvMatches):
+            bP[i,:,:,:] = np.dstack((patches1[m.queryIdx]/255.0, patches2[m.trainIdx]/255.0))
+        global graph
+        with graph.as_default():
+            bEsti = LOCATEmodel.layers[2].predict(bP)
+        for i,m in enumerate(cvMatches):
+            evec = bEsti[i,:]
+            A_p1_to_p2 = cv2.invertAffineTransform( GA.AffineFromNormalizedVector(evec) )
+            A_p1_to_p2_list.append( A_p1_to_p2 )
+    elif method=="affnet":
+        from Utils import batched_forward
+        from hesaffnet import AffNetPix, USE_CUDA
+        from LAF import normalizeLAFs, denormalizeLAFs, convertLAFs_to_A23format
+        import torch
+        pw, ph = np.shape(patches1[0])
+        x, y = pw/2.0 + 2, ph/2.0 + 2     
+        baseLAFs1 = normalizeLAFs( torch.tensor([[AffNetPix.PS/2, 0, x], [0, AffNetPix.PS/2, y]]).reshape(1,2,3), pw, ph ).repeat(len(patches1),1,1)
+        baseLAFs2 = normalizeLAFs( torch.tensor([[AffNetPix.PS/2, 0, x], [0, AffNetPix.PS/2, y]]).reshape(1,2,3), pw, ph ).repeat(len(patches2),1,1)
+        subpatches1 = torch.from_numpy(np.array(patches1)[:,16:48,16:48]).unsqueeze(1)
+        subpatches2 = torch.from_numpy(np.array(patches2)[:,16:48,16:48]).unsqueeze(1)
+        if USE_CUDA:
+            with torch.no_grad():
+                A1 = batched_forward(AffNetPix, subpatches1.cuda(), 256).cpu()
+                A2 = batched_forward(AffNetPix, subpatches2.cuda(), 256).cpu()
+        else:
+            with torch.no_grad():
+                A1 = AffNetPix(subpatches1)
+                A2 = AffNetPix(subpatches2)
+        LAFs1 = torch.cat([torch.bmm(A1,baseLAFs1[:,:,0:2]), baseLAFs1[:,:,2:] ], dim =2)
+        LAFs2 = torch.cat([torch.bmm(A2,baseLAFs2[:,:,0:2]), baseLAFs2[:,:,2:] ], dim =2)
+        dLAFs1 = denormalizeLAFs(LAFs1, pw, ph)
+        dLAFs2 = denormalizeLAFs(LAFs2, pw, ph)
+        Alist1 = convertLAFs_to_A23format( dLAFs1.detach().cpu().numpy().astype(np.float32) )
+        Alist2 = convertLAFs_to_A23format( dLAFs2.detach().cpu().numpy().astype(np.float32) )
+        for m in cvMatches:
+            A_p1_to_p2_list.append( ComposeAffineMaps( Alist2[m.trainIdx], cv2.invertAffineTransform(Alist1[m.queryIdx]) ) )
+    else:
+        print("ERROR: "+method+" is not yet implemented")
+        exit()
+
+    assert method=="simple" or len(cvMatches)==len(A_p1_to_p2_list)
+    for i,m in enumerate(cvMatches):
+        Akp1 = Alist_q_2_p1[m.queryIdx]
+        Akp2 = Alist_t_to_p2[m.trainIdx]
+        if not method=="simple":
+            A_p1_to_p2 = A_p1_to_p2_list[i]
+        A_query_to_p2 = ComposeAffineMaps(A_p1_to_p2,Akp1)
+        A_query_to_target = ComposeAffineMaps( cv2.invertAffineTransform(Akp2), A_query_to_p2 )
+        Aq2t.append( A_query_to_target )
+    return Aq2t
