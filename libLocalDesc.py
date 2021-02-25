@@ -275,17 +275,11 @@ def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFi
 
     sift_all = OnlyUniqueMatches( [cv2.DMatch(i, j, 1.0) for i,j in zip(tent_matches_in_1,tent_matches_in_2)], KPlist1, KPlist2 )
 
-    # Affine maps from query to target
-    Aq2t_list = []
-    for m in sift_all:
-        Aq2t_list.append( ComposeAffineMaps( Alist2[m.trainIdx], cv2.invertAffineTransform(Alist1[m.queryIdx]) ) )
-
     if GFilter[0:5] == 'Aff_H':
         from AffRANSAC import Aff_RANSAC_H
         Alist1 = [cv2.invertAffineTransform(A) for A in Alist1]
         Alist2 = [cv2.invertAffineTransform(A) for A in Alist2]
-        Aq2t = get_Aq2t(Alist1, Patches1[:,0,:,:], Alist2, Patches2[:,0,:,:], sift_all, method=affmaps_method)
-        # Aq2t = Aq2t_list
+        Aq2t = get_Aq2t(Alist1, Patches1[:,0,:,:], Alist2, Patches2[:,0,:,:], sift_all, method=affmaps_method, noTranslation=True)
         _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t)
     else:
         lda = CPPbridge(opt.bindir+'libDA.so')
@@ -562,7 +556,9 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignPr
         from AffRANSAC import Aff_RANSAC_H
         AID_all = lda.GetAllMatches()
         AID_all = OnlyUniqueMatches(AID_all,KPlist1,KPlist2,SpatialThres=5)
-        Aq2t = get_Aq2t(Alist1, patches1[:,0,:,:], Alist2, patches2[:,0,:,:], AID_all, method=affmaps_method)
+        Alist1 = [cv2.invertAffineTransform(A) for A in Alist1]
+        Alist2 = [cv2.invertAffineTransform(A) for A in Alist2]
+        Aq2t = get_Aq2t(Alist1, patches1[:,0,:,:], Alist2, patches2[:,0,:,:], AID_all, method=affmaps_method, noTranslation=True)
         _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t)
     else:
         if GetAllMatches:

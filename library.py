@@ -1605,7 +1605,7 @@ def get_Aq2t_from_NormAffmaps(Affmaps1, Affmaps2, cvMatches, A_p1_to_p2_list=Non
         Aq2t.append( A_query_to_target )
     return Aq2t
 
-def get_Aq2t(Alist_q_2_p1, patches1, Alist_t_to_p2, patches2, cvMatches, method='locate'):
+def get_Aq2t(Alist_q_2_p1, patches1, Alist_t_to_p2, patches2, cvMatches, method='locate', noTranslation=False):
     assert len(Alist_q_2_p1)==len(patches1) and len(Alist_q_2_p1)==len(patches1)
     Aq2t = []
     A_p1_to_p2_list = []
@@ -1661,6 +1661,8 @@ def get_Aq2t(Alist_q_2_p1, patches1, Alist_t_to_p2, patches2, cvMatches, method=
         Akp2 = Alist_t_to_p2[m.trainIdx]
         if not method=="simple":
             A_p1_to_p2 = A_p1_to_p2_list[i]
+        if noTranslation:
+            A_p1_to_p2[:,2] = 0
         A_query_to_p2 = ComposeAffineMaps(A_p1_to_p2,Akp1)
         A_query_to_target = ComposeAffineMaps( cv2.invertAffineTransform(Akp2), A_query_to_p2 )
         Aq2t.append( A_query_to_target )
