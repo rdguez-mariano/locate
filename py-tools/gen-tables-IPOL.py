@@ -324,7 +324,7 @@ def Modified_HessAffAID(img1,img2, Ndesc=500, MatchingThres = math.inf, Simi='Si
     ET_KP = time.time() - start_time
 
     desc_dim = np.shape(emb_1)[1]
-    lda = CPPbridge(opt.bindir+'libDA.so')
+    lda = CPPbridge('./build/libDA.so')
     lda.CreateMatcher(desc_dim, k = knn_num, sim_thres = MatchingThres)
     start_time = time.time()
     lda.KnnMatch(KPlist1,emb_1, KPlist2,emb_2,FastCode)    
