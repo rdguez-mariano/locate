@@ -8,7 +8,6 @@ from tqdm import tqdm
 
 CosProxThres = 0.4
 SignAlingThres = 4000
-GeoFilter = 'USAC_H'
 SameKPthres = 4
 
 
@@ -459,7 +458,7 @@ def CorrectMatches(matches,kplistq, kplistt, H, thres = 24):
 ds = LoadDatasets()
 lda = CPPbridge('./build/libDA.so')
 
-def LaunchAndRecord_USAC(MS, p, kplistq, kplistt, total, iters=1):
+def LaunchAndRecord_USAC(MS, p, kplistq, kplistt, total, iters=1, GeoFilter = 'USAC_H'):
     for i in range(iters):
         good_HC, H = lda.GeometricFilter(kplistq, p.query, kplistt, p.target, total, Filter=GeoFilter, precision=24)
         cmHC, AvDist = CorrectMatches(good_HC,kplistq, kplistt, p.Tmatrix )
@@ -483,6 +482,8 @@ for i in tqdm(dsvec):
     SHRAaff = MethodScore(MethodName='SIFT-HardNet RANSAC affine affnet')
     SHR2id = MethodScore(MethodName='SIFT-HardNet RANSAC 2pts identity')
     SHRAid = MethodScore(MethodName='SIFT-HardNet RANSAC affine identity')
+    SHRU = MethodScore(MethodName='SIFT-HardNet RANSAC USAC')
+    SHRO = MethodScore(MethodName='SIFT-HardNet RANSAC ORSA')
 
     SAR = MethodScore(MethodName='SIFT-AID RANSAC')
     SAR2loc = MethodScore(MethodName='SIFT-AID RANSAC 2pts locate')
@@ -491,6 +492,8 @@ for i in tqdm(dsvec):
     SARAaff = MethodScore(MethodName='SIFT-AID RANSAC affine affnet')
     SAR2id = MethodScore(MethodName='SIFT-AID RANSAC 2pts identity')
     SARAid = MethodScore(MethodName='SIFT-AID RANSAC affine identity')
+    SARU = MethodScore(MethodName='SIFT-AID RANSAC USAC')
+    SARO = MethodScore(MethodName='SIFT-AID RANSAC ORSA')
 
     HHR = MethodScore(MethodName='HessAffine-HardNet RANSAC')
     HHR2loc = MethodScore(MethodName='HessAffine-HardNet RANSAC 2pts locate')
@@ -499,6 +502,8 @@ for i in tqdm(dsvec):
     HHRAaff = MethodScore(MethodName='HessAffine-HardNet RANSAC affine affnet')
     HHR2id = MethodScore(MethodName='HessAffine-HardNet RANSAC 2pts identity')
     HHRAid = MethodScore(MethodName='HessAffine-HardNet RANSAC affine identity')
+    HHRU = MethodScore(MethodName='HessAffine-HardNet RANSAC USAC')
+    HHRO = MethodScore(MethodName='HessAffine-HardNet RANSAC ORSA')
 
     HAR = MethodScore(MethodName='HessAffine-AID RANSAC')
     HAR2loc = MethodScore(MethodName='HessAffine-AID RANSAC 2pts locate')
@@ -507,17 +512,19 @@ for i in tqdm(dsvec):
     HARAaff = MethodScore(MethodName='HessAffine-AID RANSAC affine affnet')
     HAR2id = MethodScore(MethodName='HessAffine-AID RANSAC 2pts identity')
     HARAid = MethodScore(MethodName='HessAffine-AID RANSAC affine identity')
+    HARU = MethodScore(MethodName='HessAffine-AID RANSAC USAC')
+    HARO = MethodScore(MethodName='HessAffine-AID RANSAC ORSA')
 
 
     try:
         f = open(storepicklepath, 'rb')
-        SHR , SHR2loc , SHRAloc , SHR2aff , SHRAaff , SHR2id , SHRAid , SAR , SAR2loc , SARAloc , SAR2aff , SARAaff , SAR2id , SARAid , HHR , HHR2loc , HHRAloc , HHR2aff , HHRAaff , HHR2id , HHRAid , HAR , HAR2loc , HARAloc , HAR2aff , HARAaff , HAR2id , HARAid = pickle.load(f)
+        SHR , SHR2loc , SHRAloc , SHR2aff , SHRAaff , SHR2id , SHRAid , SHRU , SHRO , SAR , SAR2loc , SARAloc , SAR2aff , SARAaff , SAR2id , SARAid , SARU , SARO , HHR , HHR2loc , HHRAloc , HHR2aff , HHRAaff , HHR2id , HHRAid , HHRU , HHRO , HAR , HAR2loc , HARAloc , HAR2aff , HARAaff , HAR2id , HARAid , HARU , HARO = pickle.load(f)
         f.close()
         print('Loading PICKLE-STORAGE complete')
     except:
         print('Skipping PICKLE')
 
-    StoreMSs = [SHR , SHR2loc , SHRAloc , SHR2aff , SHRAaff , SHR2id , SHRAid , SAR , SAR2loc , SARAloc , SAR2aff , SARAaff , SAR2id , SARAid , HHR , HHR2loc , HHRAloc , HHR2aff , HHRAaff , HHR2id , HHRAid , HAR , HAR2loc , HARAloc , HAR2aff , HARAaff , HAR2id , HARAid]
+    StoreMSs = [SHR , SHR2loc , SHRAloc , SHR2aff , SHRAaff , SHR2id , SHRAid , SHRU , SHRO , SAR , SAR2loc , SARAloc , SAR2aff , SARAaff , SAR2id , SARAid , SARU , SARO , HHR , HHR2loc , HHRAloc , HHR2aff , HHRAaff , HHR2id , HHRAid , HHRU , HHRO , HAR , HAR2loc , HARAloc , HAR2aff , HARAaff , HAR2id , HARAid , HARU , HARO]
     for p in tqdm(ds[i].datapairs):
         if p.pair_name in SHR.seen_pair_names:
             print('already done:',p.pair_name)
@@ -538,6 +545,9 @@ for i in tqdm(dsvec):
         LaunchAndRecord_Aff_RANSAC_H(SHR2id, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 1, Aq2t=Aq2t_identity)
         LaunchAndRecord_Aff_RANSAC_H(SHRAid, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 2, Aq2t=Aq2t_identity)
 
+        LaunchAndRecord_USAC(SHRU, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='USAC_H')
+        LaunchAndRecord_USAC(SHRO, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='ORSA_H')
+
 
         ### SIFT + AID
         kplistq, kplistt, total, Aq2t_locate, Aq2t_affnet, Aq2t_identity = Modified_siftAID(p.query,p.target,MatchingThres = SignAlingThres, Simi = 'SignProx')
@@ -552,6 +562,9 @@ for i in tqdm(dsvec):
 
         LaunchAndRecord_Aff_RANSAC_H(SAR2id, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 1, Aq2t=Aq2t_identity)
         LaunchAndRecord_Aff_RANSAC_H(SARAid, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 2, Aq2t=Aq2t_identity)
+
+        LaunchAndRecord_USAC(SARU, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='USAC_H')
+        LaunchAndRecord_USAC(SARO, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='ORSA_H')
 
 
         ### HESSAFFINE + HARDNET
@@ -568,6 +581,9 @@ for i in tqdm(dsvec):
         LaunchAndRecord_Aff_RANSAC_H(HHR2id, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 1, Aq2t=Aq2t_identity)
         LaunchAndRecord_Aff_RANSAC_H(HHRAid, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 2, Aq2t=Aq2t_identity)
 
+        LaunchAndRecord_USAC(HHRU, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='USAC_H')
+        LaunchAndRecord_USAC(HHRO, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='ORSA_H')
+
 
         ### HESSAFFINE + AID
         kplistq, kplistt, total, Aq2t_locate, Aq2t_affnet, Aq2t_identity = Modified_HessAffAID(p.query,p.target, MatchingThres = SignAlingThres, Simi = 'SignProx')
@@ -582,6 +598,9 @@ for i in tqdm(dsvec):
 
         LaunchAndRecord_Aff_RANSAC_H(HAR2id, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 1, Aq2t=Aq2t_identity)
         LaunchAndRecord_Aff_RANSAC_H(HARAid, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 2, Aq2t=Aq2t_identity)
+
+        LaunchAndRecord_USAC(HARU, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='USAC_H')
+        LaunchAndRecord_USAC(HARO, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='ORSA_H')
 
         f = open(storepicklepath, 'wb')
         pickle.dump(StoreMSs, f)

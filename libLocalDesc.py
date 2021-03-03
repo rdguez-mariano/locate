@@ -14,8 +14,10 @@ import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1.keras.backend import set_session
 from models import *
 
-config = tf.ConfigProto(allow_soft_placement=True)
-#, device_count = {'CPU' : 1, 'GPU' : 1})
+config = tf.ConfigProto(allow_soft_placement=True
+#, device_count = {'CPU' : 1, 'GPU' : 1}
+# , intra_op_parallelism_threads=4
+)
 config.gpu_options.per_process_gpu_memory_fraction = 0.1
 tfsession = tf.Session(config=config)
 set_session(tfsession)
