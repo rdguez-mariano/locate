@@ -233,6 +233,8 @@ class AffNetFast(nn.Module):
         self.halfPS = int(PS/2)
         return
     def input_norm(self,x):
+        if not x.is_contiguous():
+            x = x.contiguous()
         flat = x.view(x.size(0), -1)
         mp = torch.mean(flat, dim=1).detach()
         sp = torch.std(flat, dim=1).detach() + 1e-7

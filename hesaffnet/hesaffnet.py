@@ -51,6 +51,10 @@ HardNetDescriptor.eval()
 if USE_CUDA:
     AffNetPix = AffNetPix.cuda()
     HardNetDescriptor = HardNetDescriptor.cuda()
+else:
+    AffNetPix = AffNetPix.cpu()
+    HardNetDescriptor = HardNetDescriptor.cpu()
+
 
 
 from library import SaveImageWithKeys, packSIFTOctave
