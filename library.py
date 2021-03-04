@@ -1608,6 +1608,8 @@ def get_Aq2t_from_NormAffmaps(Affmaps1, Affmaps2, cvMatches, A_p1_to_p2_list=Non
 def get_Aq2t(Alist_q_2_p1, patches1, Alist_t_to_p2, patches2, cvMatches, method='locate', noTranslation=False):
     assert len(Alist_q_2_p1)==len(patches1) and len(Alist_q_2_p1)==len(patches1)
     Aq2t = []
+    if len(cvMatches)==0:
+        return Aq2t
     A_p1_to_p2_list = []
     if method=="simple":
             A_p1_to_p2 = np.float32([[1, 0, 0], [0, 1, 0]])
