@@ -24,7 +24,7 @@ class BaseOptions():
         parser.add_argument('--im1', type=str, default='./acc-test/adam.1.png', required=False, help='Path to query image')
         parser.add_argument('--im2', type=str, default='./acc-test/adam.2.png', required=False, help='Path to target image')
         
-        parser.add_argument('--gfilter', type=str, default="Aff_H_2", help='Geometric filter to apply: [USAC_H, ORSA_H, USAC_F, ORSA_F, Aff_H_0, Aff_H_1, Aff_H_2, Aff_H-N-0, Aff_H-N-1, Aff_H-N-2]')
+        parser.add_argument('--gfilter', type=str, default="Aff_H_2", help='Geometric filter to apply: [USAC_H, ORSA_H, USAC_F, ORSA_F, Aff_H_0, Aff_H_1, Aff_H_2, Aff_O_0, Aff_O_1, Aff_O_2]')
         parser.add_argument('--detector', type=str, default='SIFT', required=False, help='Detector: [ HessAff, SIFT]')
         parser.add_argument('--descriptor', type=str, default="AID", required=False, help='Descriptor code: [ AID, RootSIFT, HardNet]')
         parser.add_argument('--affmaps', type=str, default='locate', required=False, help='Affine maps provided by: [ locate, affnet, simple]')

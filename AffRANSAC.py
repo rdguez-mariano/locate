@@ -149,7 +149,104 @@ def Look4Inliers(matches,kplistq, kplistt, H, Affnetdecomp=[],  thres = 24):
             AvDist = -1    
         return goodM, AvDist
 
-def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter= 1000, AffInfo = 0, precision=24, Aq2t=None):
+class NFAclass:
+    def __init__(self,VolumeActiveSet,Ndata,Nsample=2):
+        self.Nsample = Nsample
+        self.Ndata = Ndata
+        self.logc_n = [self.log_n_choose_k(Ndata,k) for k in range(Ndata+1)]
+        self.logc_k = [self.log_n_choose_k(k,Nsample) for k in range(Ndata+1)]                
+        self.logconstant = np.log10( Ndata-Nsample )
+        self.epsilon = 0.00000001
+        if Nsample == 2:
+            self.dim = 6
+            self.logalpha_base = np.log10( (np.pi**3) / (6*VolumeActiveSet) ) + np.log10( 0.5/np.pi )
+        else:
+            self.dim = 2
+            self.logalpha_base = np.log10( np.pi/(VolumeActiveSet) ) + np.log10( 0.5/np.pi )
+
+    @staticmethod
+    def log_n_choose_k(n,k):
+        if k>=n or k<=0:
+            return 0.0
+        if n-k<k:
+            k = n-k
+        r = 0.0
+        for i in np.arange(1,k+1):#(int i = 1; i <= k; i++)
+            r += np.log10(np.double(n-i+1))-np.log10(np.double(i))
+        return r
+        
+    def compute_logNFA(self, k, dist):
+        logalpha = self.logalpha_base + self.dim*np.log10(dist + self.epsilon) 
+        return self.logconstant + logalpha*(k-self.Nsample)+self.logc_n[k]+self.logc_k[k]
+
+
+def ORSAInliers(matches,kplistq, kplistt, H, Affnetdecomp=[],  thres = 24, nfa = None):
+    goodM = []
+    if np.linalg.matrix_rank(H) < 3:
+        return goodM, -1
+    AvDist = 0
+    Hi = np.linalg.inv(H)
+    if len(Affnetdecomp)==0:
+        vec1, vec2 = np.zeros(shape=(4,1),dtype=np.float), np.zeros(shape=(4,1),dtype=np.float)
+    else:
+        vec1, vec2 = np.zeros(shape=(8,1),dtype=np.float), np.zeros(shape=(8,1),dtype=np.float)
+    vec_dist = []
+    vec_spatial_dist = []
+    for i in range(len(matches)):
+        m = matches[i]
+        x = kplistq[m.queryIdx].pt + tuple([1])
+        x = np.array(x).reshape(3,1)
+        Hx = np.matmul(H, x)
+        Hx = Hx/Hx[2]
+        
+        y = kplistt[m.trainIdx].pt + tuple([1])
+        y = np.array(y).reshape(3,1)
+        Hiy = np.matmul(Hi, y)
+        Hiy = Hiy/Hiy[2]
+
+        vec1[0:2,0] = Hx[0:2,0]
+        vec1[2:4,0] = x[0:2,0]
+        vec2[0:2,0] = y[0:2,0]
+        vec2[2:4,0] = Hiy[0:2,0]
+        vec_spatial_dist.append( cv2.norm(vec1,vec2) )
+
+        if len(Affnetdecomp)>0:
+            avecnet = Affnetdecomp[i][0:4]                
+            avec = affine_decomp(FirstOrderApprox_Homography(H,kplistq[m.queryIdx].pt+tuple([1])), doAssert=False)[0:4]
+
+            Affdiff = [ avec[0]/avecnet[0] if avec[0]>avecnet[0] else avecnet[0]/avec[0], 
+                        AngleDiff(avec[1],avecnet[1],InRad=True), 
+                        avec[2]/avecnet[2] if avec[2]>avecnet[2] else avecnet[2]/avec[2] , 
+                        AngleDiff(avec[3],avecnet[3],InRad=True) ]
+            vec1[4:8,0] = np.array(Affdiff)
+            vec2[4:8,0] = np.array( [1.0, 0.0, 1.0, 0.0] )   
+        vec_dist.append( cv2.norm(vec1,vec2) )
+    
+    vec_ordered_idx = np.argsort( vec_dist )
+    vec_dist = [vec_dist[i] for i in vec_ordered_idx]
+    best_nfa = 1
+    best_k = 0 
+    for k in range(len(matches)):
+        if k<2:
+            continue
+        if k<len(matches)-1 and vec_dist[k]==vec_dist[k+1]:
+            continue
+        if vec_spatial_dist[vec_ordered_idx[k]]>thres:
+            break
+        nfa_val = nfa.compute_logNFA(k-1,vec_dist[k]) 
+        if nfa_val<best_nfa:
+            best_nfa = nfa_val
+            best_k = k
+    if best_nfa<0:
+        goodM = [matches[vec_ordered_idx[i]] for i in range(best_k+1)]
+    if len(goodM)==0:                
+        AvDist = -1
+    else:
+        AvDist = np.mean([vec_spatial_dist[i] for i in range(best_k+1)])
+    return goodM, AvDist
+
+
+def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter= 1000, AffInfo = 0, precision=24, Aq2t=None, ORSAlike=False):
     '''
     AffInfo == 0 - RANSAC Vanilla
     AffInfo == 1 - Fit Homography to affine info + Classic Validation
@@ -259,7 +356,24 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
     bestH = []
     bestCount = 0
     bestMatches = []
-    if len(cvMatches)<4:
+    if len(cvMatches)==0:
+        return  bestCount, bestH, bestMatches
+    if ORSAlike:
+        h1,w1 = np.shape(img1)
+        h2,w2 = np.shape(img2)
+        VolumeActiveSet = np.max([h1*w1, h2*w2])
+        Nsample = 4
+        if AffInfo==2:
+            Nsample = 2
+            VolumeActiveSet = VolumeActiveSet*(np.pi**2)*8*8
+        Ndata = len(cvMatches)
+        nfa_obj = NFAclass(VolumeActiveSet,Ndata,Nsample=Nsample)
+        def call_ORSA(*args, **kwargs):
+            return ORSAInliers(*args, **kwargs, nfa=nfa_obj)
+        find_inliers = call_ORSA
+    else:
+        find_inliers = Look4Inliers
+    if len(cvMatches)<=4:
         return bestCount, bestH, bestMatches
     
     Ns = 2 if AffInfo>0 else 4
@@ -273,12 +387,12 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
         if AffInfo>0:
             H = HomographyFit([Xi[mi] for mi in m], Aff=[Affmaps[mi] for mi in m])
             if AffInfo==1:
-                goodM, _ = Look4Inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
+                goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
             elif AffInfo==2:
-                goodM, _ = Look4Inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = Affdecomp, thres=precision )
+                goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = Affdecomp, thres=precision )
         else:
             H = HomographyFit([Xi[mi] for mi in m], Y0=[Yi[mi] for mi in m])
-            goodM, _ = Look4Inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
+            goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
         
         if bestCount<len(goodM):
             bestCount = len(goodM)
