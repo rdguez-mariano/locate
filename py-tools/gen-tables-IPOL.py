@@ -11,8 +11,8 @@ SignAlingThres = 4000
 SameKPthres = 4
 
 
-from AffRANSAC import HomographyFit, Look4Inliers
-def LaunchAndRecord_Aff_RANSAC_H(MS, p, kplistq, kplistt, total, AffInfo = 0, Aq2t=None, BigIters=10):
+from AffRANSAC import HomographyFit, Look4Inliers, NFAclass, ORSAInliers
+def LaunchAndRecord_Aff_RANSAC_H(MS, p, kplistq, kplistt, total, AffInfo = 0, Aq2t=None, BigIters=10, ORSAlike=False):
     '''
     AffInfo == 0 - RANSAC Vanilla
     AffInfo == 1 - Fit Homography to affine info + Classic Validation
@@ -124,7 +124,27 @@ def LaunchAndRecord_Aff_RANSAC_H(MS, p, kplistq, kplistt, total, AffInfo = 0, Aq
             Xi.append( np.array( cvkeys1[cvMatches[n].queryIdx].pt+tuple([1]) ) )
             Yi.append( np.array( cvkeys2[cvMatches[n].trainIdx].pt+tuple([1]) ) )
 
-
+    bestH = []
+    bestCount = 0
+    bestMatches = []
+    if len(cvMatches)<=4:
+        return bestCount, bestH, bestMatches
+    if ORSAlike:
+        h1,w1 = np.shape(img1)
+        h2,w2 = np.shape(img2)
+        VolumeActiveSet = np.max([h1*w1, h2*w2])
+        Nsample = 4
+        if AffInfo==2:
+            Nsample = 2
+            VolumeActiveSet = VolumeActiveSet*(np.pi**2)*8*8
+        Ndata = len(cvMatches)
+        nfa_obj = NFAclass(VolumeActiveSet,Ndata,Nsample=Nsample)
+        def call_ORSA(*args, **kwargs):
+            return ORSAInliers(*args, **kwargs, nfa=nfa_obj)
+        find_inliers = call_ORSA
+    else:
+        find_inliers = Look4Inliers
+    
     for bigiter in range(BigIters):
         # RANSAC
         bestH = []
@@ -143,13 +163,13 @@ def LaunchAndRecord_Aff_RANSAC_H(MS, p, kplistq, kplistt, total, AffInfo = 0, Aq
                     # print('Affine Info', Ns)
                     H = HomographyFit([Xi[mi] for mi in m], Aff=[Affmaps[mi] for mi in m])
                     if AffInfo==1:
-                        goodM, _ = Look4Inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
+                        goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
                     elif AffInfo==2:
-                        goodM, _ = Look4Inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = Affdecomp, thres=precision )
+                        goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = Affdecomp, thres=precision )
                 else:
                     # print('No affine Info', Ns)
                     H = HomographyFit([Xi[mi] for mi in m], Y0=[Yi[mi] for mi in m])
-                    goodM, _ = Look4Inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
+                    goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
 
                 if bestCount<len(goodM):
                     bestCount = len(goodM)
@@ -468,7 +488,7 @@ def LaunchAndRecord_USAC(MS, p, kplistq, kplistt, total, iters=1, GeoFilter = 'U
     MS.EndOfImgTreatement()
 
 
-RANSACiters = 100
+RANSACiters = 20
 dsvec = [0] # [0,1], [2,3] or [4,0,1]
 
 import pickle
@@ -484,6 +504,9 @@ for i in tqdm(dsvec):
     SHRAid = MethodScore(MethodName='SIFT-HardNet RANSAC affine identity')
     SHRU = MethodScore(MethodName='SIFT-HardNet RANSAC USAC')
     SHRO = MethodScore(MethodName='SIFT-HardNet RANSAC ORSA')
+    SHRAC = MethodScore(MethodName='SIFT-HardNet RANSAC AC')
+    SHRAC2loc = MethodScore(MethodName='SIFT-HardNet RANSAC AC 2pts locate')
+    SHRACAloc = MethodScore(MethodName='SIFT-HardNet RANSAC AC affine locate')
 
     SAR = MethodScore(MethodName='SIFT-AID RANSAC')
     SAR2loc = MethodScore(MethodName='SIFT-AID RANSAC 2pts locate')
@@ -494,6 +517,9 @@ for i in tqdm(dsvec):
     SARAid = MethodScore(MethodName='SIFT-AID RANSAC affine identity')
     SARU = MethodScore(MethodName='SIFT-AID RANSAC USAC')
     SARO = MethodScore(MethodName='SIFT-AID RANSAC ORSA')
+    SARAC = MethodScore(MethodName='SIFT-AID RANSAC AC')
+    SARAC2loc = MethodScore(MethodName='SIFT-AID RANSAC AC 2pts locate')
+    SARACAloc = MethodScore(MethodName='SIFT-AID RANSAC AC affine locate')
 
     HHR = MethodScore(MethodName='HessAffine-HardNet RANSAC')
     HHR2loc = MethodScore(MethodName='HessAffine-HardNet RANSAC 2pts locate')
@@ -504,6 +530,9 @@ for i in tqdm(dsvec):
     HHRAid = MethodScore(MethodName='HessAffine-HardNet RANSAC affine identity')
     HHRU = MethodScore(MethodName='HessAffine-HardNet RANSAC USAC')
     HHRO = MethodScore(MethodName='HessAffine-HardNet RANSAC ORSA')
+    HHRAC = MethodScore(MethodName='HessAffine-HardNet RANSAC AC')
+    HHRAC2loc = MethodScore(MethodName='HessAffine-HardNet RANSAC AC 2pts locate')
+    HHRACAloc = MethodScore(MethodName='HessAffine-HardNet RANSAC AC affine locate')
 
     HAR = MethodScore(MethodName='HessAffine-AID RANSAC')
     HAR2loc = MethodScore(MethodName='HessAffine-AID RANSAC 2pts locate')
@@ -514,17 +543,20 @@ for i in tqdm(dsvec):
     HARAid = MethodScore(MethodName='HessAffine-AID RANSAC affine identity')
     HARU = MethodScore(MethodName='HessAffine-AID RANSAC USAC')
     HARO = MethodScore(MethodName='HessAffine-AID RANSAC ORSA')
+    HARAC = MethodScore(MethodName='HessAffine-AID RANSAC AC')
+    HARAC2loc = MethodScore(MethodName='HessAffine-AID RANSAC AC 2pts locate')
+    HARACAloc = MethodScore(MethodName='HessAffine-AID RANSAC AC affine locate')
 
 
     try:
         f = open(storepicklepath, 'rb')
-        SHR , SHR2loc , SHRAloc , SHR2aff , SHRAaff , SHR2id , SHRAid , SHRU , SHRO , SAR , SAR2loc , SARAloc , SAR2aff , SARAaff , SAR2id , SARAid , SARU , SARO , HHR , HHR2loc , HHRAloc , HHR2aff , HHRAaff , HHR2id , HHRAid , HHRU , HHRO , HAR , HAR2loc , HARAloc , HAR2aff , HARAaff , HAR2id , HARAid , HARU , HARO = pickle.load(f)
+        SHR , SHR2loc , SHRAloc , SHR2aff , SHRAaff , SHR2id , SHRAid , SHRU , SHRO , SHRAC , SHRAC2loc , SHRACAloc , SAR , SAR2loc , SARAloc , SAR2aff , SARAaff , SAR2id , SARAid , SARU , SARO , SARAC , SARAC2loc , SARACAloc , HHR , HHR2loc , HHRAloc , HHR2aff , HHRAaff , HHR2id , HHRAid , HHRU , HHRO , HHRAC , HHRAC2loc , HHRACAloc , HAR , HAR2loc , HARAloc , HAR2aff , HARAaff , HAR2id , HARAid , HARU , HARO , HARAC , HARAC2loc , HARACAloc = pickle.load(f)
         f.close()
         print('Loading PICKLE-STORAGE complete')
     except:
         print('Skipping PICKLE')
 
-    StoreMSs = [SHR , SHR2loc , SHRAloc , SHR2aff , SHRAaff , SHR2id , SHRAid , SHRU , SHRO , SAR , SAR2loc , SARAloc , SAR2aff , SARAaff , SAR2id , SARAid , SARU , SARO , HHR , HHR2loc , HHRAloc , HHR2aff , HHRAaff , HHR2id , HHRAid , HHRU , HHRO , HAR , HAR2loc , HARAloc , HAR2aff , HARAaff , HAR2id , HARAid , HARU , HARO]
+    StoreMSs = [SHR , SHR2loc , SHRAloc , SHR2aff , SHRAaff , SHR2id , SHRAid , SHRU , SHRO , SHRAC , SHRAC2loc , SHRACAloc , SAR , SAR2loc , SARAloc , SAR2aff , SARAaff , SAR2id , SARAid , SARU , SARO , SARAC , SARAC2loc , SARACAloc , HHR , HHR2loc , HHRAloc , HHR2aff , HHRAaff , HHR2id , HHRAid , HHRU , HHRO , HHRAC , HHRAC2loc , HHRACAloc , HAR , HAR2loc , HARAloc , HAR2aff , HARAaff , HAR2id , HARAid , HARU , HARO , HARAC , HARAC2loc , HARACAloc]
     for p in tqdm(ds[i].datapairs):
         if p.pair_name in SHR.seen_pair_names:
             print('already done:',p.pair_name)
@@ -548,6 +580,10 @@ for i in tqdm(dsvec):
         LaunchAndRecord_USAC(SHRU, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='USAC_H')
         LaunchAndRecord_USAC(SHRO, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='ORSA_H')
 
+        LaunchAndRecord_Aff_RANSAC_H(SHRAC, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 0, ORSAlike=True)
+        LaunchAndRecord_Aff_RANSAC_H(SHRAC2loc, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 1, Aq2t=Aq2t_locate, ORSAlike=True)
+        LaunchAndRecord_Aff_RANSAC_H(SHRACAloc, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 2, Aq2t=Aq2t_locate, ORSAlike=True)
+
 
         ### SIFT + AID
         kplistq, kplistt, total, Aq2t_locate, Aq2t_affnet, Aq2t_identity = Modified_siftAID(p.query,p.target,MatchingThres = SignAlingThres, Simi = 'SignProx')
@@ -565,6 +601,10 @@ for i in tqdm(dsvec):
 
         LaunchAndRecord_USAC(SARU, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='USAC_H')
         LaunchAndRecord_USAC(SARO, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='ORSA_H')
+
+        LaunchAndRecord_Aff_RANSAC_H(SARAC, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 0, ORSAlike=True)
+        LaunchAndRecord_Aff_RANSAC_H(SARAC2loc, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 1, Aq2t=Aq2t_locate, ORSAlike=True)
+        LaunchAndRecord_Aff_RANSAC_H(SARACAloc, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 2, Aq2t=Aq2t_locate, ORSAlike=True)
 
 
         ### HESSAFFINE + HARDNET
@@ -584,6 +624,10 @@ for i in tqdm(dsvec):
         LaunchAndRecord_USAC(HHRU, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='USAC_H')
         LaunchAndRecord_USAC(HHRO, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='ORSA_H')
 
+        LaunchAndRecord_Aff_RANSAC_H(HHRAC, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 0, ORSAlike=True)
+        LaunchAndRecord_Aff_RANSAC_H(HHRAC2loc, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 1, Aq2t=Aq2t_locate, ORSAlike=True)
+        LaunchAndRecord_Aff_RANSAC_H(HHRACAloc, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 2, Aq2t=Aq2t_locate, ORSAlike=True)
+
 
         ### HESSAFFINE + AID
         kplistq, kplistt, total, Aq2t_locate, Aq2t_affnet, Aq2t_identity = Modified_HessAffAID(p.query,p.target, MatchingThres = SignAlingThres, Simi = 'SignProx')
@@ -601,6 +645,10 @@ for i in tqdm(dsvec):
 
         LaunchAndRecord_USAC(HARU, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='USAC_H')
         LaunchAndRecord_USAC(HARO, p, kplistq, kplistt, total, iters=RANSACiters, GeoFilter='ORSA_H')
+
+        LaunchAndRecord_Aff_RANSAC_H(HARAC, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 0, ORSAlike=True)
+        LaunchAndRecord_Aff_RANSAC_H(HARAC2loc, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 1, Aq2t=Aq2t_locate, ORSAlike=True)
+        LaunchAndRecord_Aff_RANSAC_H(HARACAloc, p, kplistq, kplistt, total, BigIters=RANSACiters, AffInfo = 2, Aq2t=Aq2t_locate, ORSAlike=True)
 
         f = open(storepicklepath, 'wb')
         pickle.dump(StoreMSs, f)

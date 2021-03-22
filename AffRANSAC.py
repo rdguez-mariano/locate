@@ -356,7 +356,7 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
     bestH = []
     bestCount = 0
     bestMatches = []
-    if len(cvMatches)==0:
+    if len(cvMatches)<=4:
         return  bestCount, bestH, bestMatches
     if ORSAlike:
         h1,w1 = np.shape(img1)
@@ -373,8 +373,6 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
         find_inliers = call_ORSA
     else:
         find_inliers = Look4Inliers
-    if len(cvMatches)<=4:
-        return bestCount, bestH, bestMatches
     
     Ns = 2 if AffInfo>0 else 4
     for i in range(Niter):
