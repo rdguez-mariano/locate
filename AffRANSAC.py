@@ -150,19 +150,24 @@ def Look4Inliers(matches,kplistq, kplistt, H, Affnetdecomp=[],  thres = 24):
         return goodM, AvDist
 
 class NFAclass:
-    def __init__(self,VolumeActiveSet,Ndata,Nsample=2):
+    def __init__(self,VolumeActiveSet,Ndata,AffInfo=0):
+        if AffInfo==0:
+            Nsample = 4
+        else:      
+            Nsample = 2
+        self.AffInfo = AffInfo
         self.Nsample = Nsample
         self.Ndata = Ndata
         self.logc_n = [self.log_n_choose_k(Ndata,k) for k in range(Ndata+1)]
         self.logc_k = [self.log_n_choose_k(k,Nsample) for k in range(Ndata+1)]                
         self.logconstant = np.log10( Ndata-Nsample )
         self.epsilon = 0.00000001
-        if Nsample == 2:
-            self.dim = 6
-            self.logalpha_base = np.log10( (np.pi**3) / (6*VolumeActiveSet) ) + np.log10( 0.5/np.pi )
+        if AffInfo == 2:
+            self.dim = 8
+            self.logalpha_base = np.log10( ((np.pi**4)/(4*3*2)) / VolumeActiveSet ) + np.log10( 0.5/np.pi )
         else:
-            self.dim = 2
-            self.logalpha_base = np.log10( np.pi/(VolumeActiveSet) ) + np.log10( 0.5/np.pi )
+            self.dim = 4
+            self.logalpha_base = np.log10( ((np.pi**2)/2) / VolumeActiveSet ) + np.log10( 0.5/np.pi )
 
     @staticmethod
     def log_n_choose_k(n,k):
@@ -208,9 +213,10 @@ def ORSAInliers(matches,kplistq, kplistt, H, Affnetdecomp=[],  thres = 24, nfa =
         vec1[2:4,0] = x[0:2,0]
         vec2[0:2,0] = y[0:2,0]
         vec2[2:4,0] = Hiy[0:2,0]
-        vec_spatial_dist.append( cv2.norm(vec1,vec2) )
+        spatial_dist = cv2.norm(vec1,vec2)
+        vec_spatial_dist.append( spatial_dist )
 
-        if len(Affnetdecomp)>0:
+        if len(Affnetdecomp)>0 and spatial_dist<=thres:
             avecnet = Affnetdecomp[i][0:4]                
             avec = affine_decomp(FirstOrderApprox_Homography(H,kplistq[m.queryIdx].pt+tuple([1])), doAssert=False)[0:4]
 
@@ -219,16 +225,21 @@ def ORSAInliers(matches,kplistq, kplistt, H, Affnetdecomp=[],  thres = 24, nfa =
                         avec[2]/avecnet[2] if avec[2]>avecnet[2] else avecnet[2]/avec[2] , 
                         AngleDiff(avec[3],avecnet[3],InRad=True) ]
             vec1[4:8,0] = np.array(Affdiff)
-            vec2[4:8,0] = np.array( [1.0, 0.0, 1.0, 0.0] )   
-        vec_dist.append( cv2.norm(vec1,vec2) )
+            vec2[4:8,0] = np.array( [1.0, 0.0, 1.0, 0.0] )
+
+        if spatial_dist>thres:   
+            vec_dist.append( np.inf )
+        else:
+            if len(Affnetdecomp)>0:
+                vec_dist.append( cv2.norm(vec1,vec2) )
+            else:
+                vec_dist.append( spatial_dist )
     
     vec_ordered_idx = np.argsort( vec_dist )
     vec_dist = [vec_dist[i] for i in vec_ordered_idx]
-    best_nfa = 1
+    best_nfa = np.inf
     best_k = 0 
-    for k in range(len(matches)):
-        if k<2:
-            continue
+    for k in range(2,len(matches)):
         if k<len(matches)-1 and vec_dist[k]==vec_dist[k+1]:
             continue
         if vec_spatial_dist[vec_ordered_idx[k]]>thres:
@@ -239,11 +250,7 @@ def ORSAInliers(matches,kplistq, kplistt, H, Affnetdecomp=[],  thres = 24, nfa =
             best_k = k
     if best_nfa<0:
         goodM = [matches[vec_ordered_idx[i]] for i in range(best_k+1)]
-    if len(goodM)==0:                
-        AvDist = -1
-    else:
-        AvDist = np.mean([vec_spatial_dist[i] for i in range(best_k+1)])
-    return goodM, AvDist
+    return goodM, best_nfa
 
 
 def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter= 1000, AffInfo = 0, precision=24, Aq2t=None, ORSAlike=False):
@@ -354,25 +361,27 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
 
     # RANSAC
     bestH = []
-    bestCount = 0
+    bestScore = [np.inf,0]
     bestMatches = []
     if len(cvMatches)<=4:
-        return  bestCount, bestH, bestMatches
+        return  bestScore, bestH, bestMatches
     if ORSAlike:
         h1,w1 = np.shape(img1)
         h2,w2 = np.shape(img2)
-        VolumeActiveSet = np.max([h1*w1, h2*w2])
-        Nsample = 4
+        VolumeActiveSet = h1*w1*h2*w2
         if AffInfo==2:
-            Nsample = 2
-            VolumeActiveSet = VolumeActiveSet*(np.pi**2)*8*8
+            VolumeActiveSet = VolumeActiveSet*(np.pi**2)*12*12
         Ndata = len(cvMatches)
-        nfa_obj = NFAclass(VolumeActiveSet,Ndata,Nsample=Nsample)
+        nfa_obj = NFAclass(VolumeActiveSet,Ndata,AffInfo=AffInfo)
         def call_ORSA(*args, **kwargs):
-            return ORSAInliers(*args, **kwargs, nfa=nfa_obj)
+            goodM, nfa_val = ORSAInliers(*args, **kwargs, nfa=nfa_obj)
+            return goodM, [nfa_val,len(goodM)]
         find_inliers = call_ORSA
     else:
-        find_inliers = Look4Inliers
+        def call_Look4Inliers(*args, **kwargs):
+            goodM, AvDist = Look4Inliers(*args, **kwargs)
+            return goodM, [-len(goodM),AvDist]
+        find_inliers = call_Look4Inliers
     
     Ns = 2 if AffInfo>0 else 4
     for i in range(Niter):
@@ -385,15 +394,19 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
         if AffInfo>0:
             H = HomographyFit([Xi[mi] for mi in m], Aff=[Affmaps[mi] for mi in m])
             if AffInfo==1:
-                goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
+                goodM, scorevec = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
             elif AffInfo==2:
-                goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = Affdecomp, thres=precision )
+                goodM, scorevec = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = Affdecomp, thres=precision )
         else:
             H = HomographyFit([Xi[mi] for mi in m], Y0=[Yi[mi] for mi in m])
-            goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
+            goodM, scorevec = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
         
-        if bestCount<len(goodM):
-            bestCount = len(goodM)
+        if bestScore[0]>scorevec[0] or (bestScore[0]==scorevec[0] and bestScore[1]>scorevec[1]):
+            bestScore = scorevec
             bestH = H
             bestMatches = goodM
-    return  bestCount, bestH, bestMatches
+    if ORSAlike:
+        score2return = bestScore[0]
+    else:
+        score2return = -bestScore[0]
+    return  score2return, bestH, bestMatches
