@@ -124,34 +124,35 @@ def LaunchAndRecord_Aff_RANSAC_H(MS, p, kplistq, kplistt, total, AffInfo = 0, Aq
             Xi.append( np.array( cvkeys1[cvMatches[n].queryIdx].pt+tuple([1]) ) )
             Yi.append( np.array( cvkeys2[cvMatches[n].trainIdx].pt+tuple([1]) ) )
 
+    # RANSAC
     bestH = []
-    bestCount = 0
+    bestScore = [np.inf,0]
     bestMatches = []
-    if len(cvMatches)<=4:
-        return bestCount, bestH, bestMatches
     if ORSAlike:
         h1,w1 = np.shape(img1)
         h2,w2 = np.shape(img2)
-        VolumeActiveSet = np.max([h1*w1, h2*w2])
-        Nsample = 4
+        VolumeActiveSet = h1*w1*h2*w2
         if AffInfo==2:
-            Nsample = 2
-            VolumeActiveSet = VolumeActiveSet*(np.pi**2)*8*8
+            VolumeActiveSet = VolumeActiveSet*(np.pi**2)*12*12
         Ndata = len(cvMatches)
-        nfa_obj = NFAclass(VolumeActiveSet,Ndata,Nsample=Nsample)
+        nfa_obj = NFAclass(VolumeActiveSet,Ndata,AffInfo=AffInfo)
         def call_ORSA(*args, **kwargs):
-            return ORSAInliers(*args, **kwargs, nfa=nfa_obj)
+            goodM, nfa_val = ORSAInliers(*args, **kwargs, nfa=nfa_obj)
+            return goodM, [nfa_val,len(goodM)]
         find_inliers = call_ORSA
     else:
-        find_inliers = Look4Inliers
+        def call_Look4Inliers(*args, **kwargs):
+            goodM, AvDist = Look4Inliers(*args, **kwargs)
+            return goodM, [-len(goodM),AvDist]
+        find_inliers = call_Look4Inliers
     
+    Ns = 2 if AffInfo>0 else 4
     for bigiter in range(BigIters):
         # RANSAC
         bestH = []
-        bestCount = 0
+        bestScore = [np.inf,0]
         bestMatches = []
-        if len(cvMatches)>=4:
-            Ns = 2 if AffInfo>0 else 4
+        if len(cvMatches)>Ns:
             for i in range(Niter):
                 m = -1*np.ones(Ns,np.int)
                 for j in range(Ns):
@@ -160,19 +161,17 @@ def LaunchAndRecord_Aff_RANSAC_H(MS, p, kplistq, kplistt, total, AffInfo = 0, Aq
                         m1 = np.random.randint(0,len(cvMatches))
                     m[j] = m1
                 if AffInfo>0:
-                    # print('Affine Info', Ns)
                     H = HomographyFit([Xi[mi] for mi in m], Aff=[Affmaps[mi] for mi in m])
                     if AffInfo==1:
-                        goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
+                        goodM, scorevec = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
                     elif AffInfo==2:
-                        goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = Affdecomp, thres=precision )
+                        goodM, scorevec = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = Affdecomp, thres=precision )
                 else:
-                    # print('No affine Info', Ns)
                     H = HomographyFit([Xi[mi] for mi in m], Y0=[Yi[mi] for mi in m])
-                    goodM, _ = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
-
-                if bestCount<len(goodM):
-                    bestCount = len(goodM)
+                    goodM, scorevec = find_inliers(cvMatches,cvkeys1, cvkeys2, H, Affnetdecomp = [], thres=precision )
+                
+                if bestScore[0]>scorevec[0] or (bestScore[0]==scorevec[0] and bestScore[1]>scorevec[1]):
+                    bestScore = scorevec
                     bestH = H
                     bestMatches = goodM
             
