@@ -23,8 +23,11 @@ aid_thres=$5
 hardnet_thres=$6
 detector=$7
 descriptor=$8
+ransac_iters=$9
+precision=${10}
 
 
+# Workaround for IPOL !
 if [ -d $virtualenv ]; then
   source $virtualenv/bin/activate
   if python -c "import tensorflow" &> /dev/null; then
@@ -34,7 +37,8 @@ if [ -d $virtualenv ]; then
     echo 'Installing tensorflow...'
     pip install --upgrade pip
     pip install --upgrade setuptools
-    pip install --upgrade tensorflow==1.15.0
+    pip install --upgrade tensorflow==1.15.0 tensorflow-estimator==1.15.1
+    pip install --upgrade h5py==2.7.1
   fi
 fi
 
@@ -45,7 +49,7 @@ fi
 # ls -al $binfolder
 # ls -al
 
-locate_caller.py --im1 $input0 --im2 $input1 --gfilter $gfilter --aid_thres $aid_thres --hardnet_thres $hardnet_thres --detector $detector --descriptor $descriptor --workdir "./" --bindir $binfolder --visual
+locate_caller.py --im1 $input0 --im2 $input1 --gfilter $gfilter --aid_thres $aid_thres --hardnet_thres $hardnet_thres --detector $detector --descriptor $descriptor --workdir "./" --bindir $binfolder --visual --ransac_iters $ransac_iters --precision $precision
 
 # ls -al
 

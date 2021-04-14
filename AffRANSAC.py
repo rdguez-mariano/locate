@@ -188,7 +188,7 @@ class NFAclass:
 def ORSAInliers(matches,kplistq, kplistt, H, Affnetdecomp=[],  thres = 24, nfa = None):
     goodM = []
     if np.linalg.matrix_rank(H) < 3:
-        return goodM, -1
+        return goodM, 1
     AvDist = 0
     Hi = np.linalg.inv(H)
     if len(Affnetdecomp)==0:
@@ -253,7 +253,7 @@ def ORSAInliers(matches,kplistq, kplistt, H, Affnetdecomp=[],  thres = 24, nfa =
     return goodM, best_nfa
 
 
-def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter= 1000, AffInfo = 0, precision=24, Aq2t=None, ORSAlike=False):
+def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter= 1000, AffInfo = 0, precision=24, Aq2t=None, ORSAlike=False, verb=True):
     '''
     AffInfo == 0 - RANSAC Vanilla
     AffInfo == 1 - Fit Homography to affine info + Classic Validation
@@ -365,7 +365,7 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
     bestMatches = []
     Ns = 2 if AffInfo>0 else 4
     if len(cvMatches)<=Ns:
-        return  bestScore, bestH, bestMatches
+        return  np.nan, bestH, bestMatches
     if ORSAlike:
         h1,w1 = np.shape(img1)
         h2,w2 = np.shape(img2)
@@ -407,6 +407,10 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
             bestMatches = goodM
     if ORSAlike:
         score2return = bestScore[0]
+        if verb:
+            print("Best log(NFA) score : %0.4f"%score2return)
     else:
         score2return = -bestScore[0]
+        if verb:
+            print("Best inliers count : %i"%score2return)
     return  score2return, bestH, bestMatches

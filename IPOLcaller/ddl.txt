@@ -4,7 +4,9 @@
         "files": {
             "input_0.png"          : "Query image",
             "input_1.png"           : "Target image",
-            "matches.png"        : "Matches",
+            "matches.png"        : "Matches in consensus",
+            "all_matches.png"        : "All matches",
+            "queryontarget.png"        : "Query on Target",
             "stdout.txt": "Output_details"
     },
     "params": [
@@ -25,7 +27,7 @@
   },
   "general": {
     "timeout": 300,
-    "demo_title": "LOCATE: A LOCal Affine Transform Estimator",
+    "demo_title": "Robust homography estimation from local affine maps",
     "input_description": [
       ""
     ],
@@ -56,6 +58,10 @@
         }
   ],
   "params": [
+        {
+            "label": "<center> Attention: All methods are run on CPU for this demo ! </center>",
+            "type": "label"
+        },
         {
             "id": "detector",
             "label": "<center> Detector </center>",
@@ -110,17 +116,60 @@
             "type": "selection_radio",
             "values": {
                 "RANSAC Vanilla </br>":"Aff_H_0",
-                "RANSAC 2pts (uses LOCATE)</br>": "Aff_H_1",
-                "RANSAC affine (uses LOCATE)</br>": "Aff_H_2"
+                "RANSAC 2pts </br>": "Aff_H_1",
+                "RANSAC affine </br>": "Aff_H_2",
+                "RANSAC 2pts (NFA) </br>": "Aff_O_1",
+                "RANSAC affine (NFA) </br>": "Aff_O_2"
             },
             "default_value": "Aff_H_2",
+            "vertical": true
+        },
+        {
+            "id": "affmaps",
+            "label": "<center> Affine provider </center>",
+            "type": "selection_radio",
+            "values": {
+                "Locate method </br>":"locate",
+                "Affnet method</br>": "affnet",
+                "Naive method</br>": "simple"
+            },
+            "default_value": "locate",
+            "visible": "params.gfilter!='Aff_H_0'",
+            "vertical": true
+        },
+        {
+            "id": "ransac_iters",
+            "label": "<p align=\"right\">RANSAC iterations= </p>",
+            "type": "range",
+            "values": {
+                "default": 1000,
+                "max": 10000,
+                "min": 10,
+                "step": 10
+            },
+            "visible": true,
+            "vertical": true
+        },
+        {
+            "id": "precision",
+            "label": "<p align=\"right\">Symmetric Transfer Error<= </p>",
+            "type": "range",
+            "values": {
+                "default": 24,
+                "max": 50,
+                "min": 0,
+                "step": 1
+            },
+            "visible": true,
             "vertical": true
         }
   ],
   "results": [
         {
             "contents": {
-                "Matches": {"img": "matches.png"}
+                "Matches in consensus": {"img": "matches.png"},
+                "All Matches": {"img": "all_matches.png"},
+                "Query on Target": {"img": "queryontarget.png"}
             },
             "label": "",
             "type": "gallery"
@@ -131,5 +180,5 @@
             "type": "text_file"
         }
   ],
-  "run":  "${bin}/run.sh ${virtualenv} ${demoextras} ${bin} $gfilter $aid_thres $hardnet_thres $detector $descriptor"
+  "run":  "${bin}/run.sh ${virtualenv} ${demoextras} ${bin} $gfilter $aid_thres $hardnet_thres $detector $descriptor  $ransac_iters $precision"
 }

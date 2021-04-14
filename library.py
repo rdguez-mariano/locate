@@ -31,8 +31,11 @@ class BaseOptions():
         parser.add_argument('--aid_thres', type=float, default=4000, help='AID matching threshold')
         parser.add_argument('--hardnet_thres', type=float, default=0.8, help='Hardnet matching threshold')
         parser.add_argument('--rootsift_thres', type=float, default=0.8, help='AID matching threshold')
+        parser.add_argument('--precision', type=float, default=24, help='Precision of the symmetric transfer error')
+        parser.add_argument('--ransac_iters', type=int, default=1000, help='The number of RANSAC iterations')
+        
 
-        parser.add_argument('--visual', default= True, action='store_true', help='Visualize output images')
+        parser.add_argument('--visual', default=False, action='store_true', help='Visualize output images')
         parser.add_argument('--verbose', default=False, action='store_true', help='Verbose mode')
 
         parser.add_argument('--workdir', type=str, default='./temp/', required=False, help='Work dir for output images.')

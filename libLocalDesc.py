@@ -260,7 +260,7 @@ def RootSIFT(img1,img2, MatchingThres = opt.rootsift_thres, knn_num = 2, Rooted 
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
 
-def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24, HessAffNet=True, affmaps_method='locate'):
+def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24, HessAffNet=True, affmaps_method='locate', ransac_iters = 1000):
     start_time = time.time()
     if HessAffNet:
         KPlist1, Patches1, descriptors1, Alist1, Score1 = HessAffNetHardNet_DetectAndDescribe(img1, Nfeatures=Ndesc)
@@ -283,7 +283,7 @@ def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFi
         Alist1 = [cv2.invertAffineTransform(A) for A in Alist1]
         Alist2 = [cv2.invertAffineTransform(A) for A in Alist2]
         Aq2t = get_Aq2t(Alist1, Patches1[:,0,:,:], Alist2, Patches2[:,0,:,:], sift_all, method=affmaps_method, noTranslation=True)
-        _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA)
+        _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA, Niter=ransac_iters )
     else:
         lda = CPPbridge(opt.bindir+'libDA.so')
         sift_consensus, H_sift = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, sift_all, Filter=GFilter, precision=EuPrecision)
@@ -320,7 +320,7 @@ def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFi
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
 
-def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 2, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24, AffNetBeforeDesc=True, affmaps_method='locate'):
+def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 2, GFilter=opt.gfilter, Visual=opt.visual, EuPrecision=24, AffNetBeforeDesc=True, affmaps_method='locate',ransac_iters = 1000):
     # find the keypoints with SIFT
     start_time = time.time()
     KPlist1, sift_des1 = ComputeSIFTKeypoints(img1, Desc = True)
@@ -379,7 +379,7 @@ def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 
         useORSA = GFilter[4] == 'O'
         from AffRANSAC import Aff_RANSAC_H
         Aq2t = get_Aq2t(A_list1, patches1, A_list2, patches2, sift_all, method=affmaps_method)
-        _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA)
+        _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA, Niter=ransac_iters)
     else:
         sift_consensus, H_sift = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, sift_all, Filter=GFilter, precision=EuPrecision)
 
@@ -512,7 +512,7 @@ def HessianLaplaceRootSIFT(img1,img2, MatchingThres = opt.rootsift_thres, Ndesc=
     return sift_all, sift_consensus, KPlist1, KPlist2, H_sift, ET_KP, ET_M
 
     
-def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num = 1, GFilter=opt.gfilter, Visual=opt.visual, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf, affmaps_method = "locate"):
+def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num = 1, GFilter=opt.gfilter, Visual=opt.visual, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf, affmaps_method = "locate", ransac_iters = 1000):
     if Simi=='CosProx':
         FastCode = 0
     elif Simi=='SignProx':
@@ -564,7 +564,7 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignPr
         Alist1 = [cv2.invertAffineTransform(A) for A in Alist1]
         Alist2 = [cv2.invertAffineTransform(A) for A in Alist2]
         Aq2t = get_Aq2t(Alist1, patches1[:,0,:,:], Alist2, patches2[:,0,:,:], AID_all, method=affmaps_method, noTranslation=True)
-        _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA)
+        _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA, Niter=ransac_iters)
     else:
         if GetAllMatches:
             AID_all = lda.GetAllMatches()
@@ -585,7 +585,7 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignPr
     return AID_all, AID_consensus, KPlist1, KPlist2, H_AID, ET_KP, ET_M
 
 
-def siftAID(img1,img2, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num = 1, GFilter=opt.gfilter, Visual=opt.visual, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf, RegionGrowingIters=-1, affmaps_method = "locate"):
+def siftAID(img1,img2, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num = 1, GFilter=opt.gfilter, Visual=opt.visual, safe_sim_thres_pos = 0.8, safe_sim_thres_neg = 0.2, GetAllMatches=False, EuPrecision=24, descRadius=math.inf, RegionGrowingIters=-1, affmaps_method = "locate", ransac_iters = 1000):
     if Simi=='CosProx':
         FastCode = 0
     elif Simi=='SignProx':
@@ -662,7 +662,7 @@ def siftAID(img1,img2, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num =
         useORSA = GFilter[4] == 'O'
         from AffRANSAC import Aff_RANSAC_H
         Aq2t = get_Aq2t(A_list1, patches1, A_list2, patches2, AID_all, method=affmaps_method)
-        _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA)
+        _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA, Niter=ransac_iters)
     else:
         if RegionGrowingIters>=0:
             AID_consensus, H_AID = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, AID_all, Filter=GFilter, precision=EuPrecision)
