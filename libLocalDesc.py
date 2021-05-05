@@ -282,8 +282,10 @@ def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFi
         from AffRANSAC import Aff_RANSAC_H
         Alist1 = [cv2.invertAffineTransform(A) for A in Alist1]
         Alist2 = [cv2.invertAffineTransform(A) for A in Alist2]
-        Aq2t = get_Aq2t(Alist1, Patches1[:,0,:,:], Alist2, Patches2[:,0,:,:], sift_all, method=affmaps_method, noTranslation=True)
+        Aq2t, A_p1_to_target = get_Aq2t(Alist1, Patches1[:,0,:,:], Alist2, Patches2[:,0,:,:], sift_all, method=affmaps_method, noTranslation=True)
         _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA, Niter=ransac_iters )
+        if Visual:
+            save_randomAffineInliers(img1,img2,KPlist1,KPlist2,Alist1,Alist2,sift_consensus, Aq2t, A_p1_to_target,patch_width=5, noTranslation=True)
     else:
         lda = CPPbridge(opt.bindir+'libDA.so')
         sift_consensus, H_sift = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, sift_all, Filter=GFilter, precision=EuPrecision)
@@ -378,8 +380,10 @@ def SIFT_AffNet_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, knn_num = 
     if GFilter[0:5] in ['Aff_H','Aff_O']:
         useORSA = GFilter[4] == 'O'
         from AffRANSAC import Aff_RANSAC_H
-        Aq2t = get_Aq2t(A_list1, patches1, A_list2, patches2, sift_all, method=affmaps_method)
+        Aq2t, A_p1_to_target = get_Aq2t(A_list1, patches1, A_list2, patches2, sift_all, method=affmaps_method)
         _, H_sift, sift_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, sift_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA, Niter=ransac_iters)
+        if Visual:
+            save_randomAffineInliers(img1,img2,KPlist1,KPlist2,A_list1,A_list2,sift_consensus, Aq2t, A_p1_to_target)
     else:
         sift_consensus, H_sift = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, sift_all, Filter=GFilter, precision=EuPrecision)
 
@@ -560,11 +564,13 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignPr
         useORSA = GFilter[4] == 'O'
         from AffRANSAC import Aff_RANSAC_H
         AID_all = lda.GetAllMatches()
-        AID_all = OnlyUniqueMatches(AID_all,KPlist1,KPlist2,SpatialThres=5)
+        AID_all = OnlyUniqueMatches(AID_all,KPlist1,KPlist2,SpatialThres=10)
         Alist1 = [cv2.invertAffineTransform(A) for A in Alist1]
         Alist2 = [cv2.invertAffineTransform(A) for A in Alist2]
-        Aq2t = get_Aq2t(Alist1, patches1[:,0,:,:], Alist2, patches2[:,0,:,:], AID_all, method=affmaps_method, noTranslation=True)
+        Aq2t, A_p1_to_target = get_Aq2t(Alist1, patches1[:,0,:,:], Alist2, patches2[:,0,:,:], AID_all, method=affmaps_method, noTranslation=True)
         _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA, Niter=ransac_iters)
+        if Visual:
+            save_randomAffineInliers(img1,img2,KPlist1,KPlist2,Alist1,Alist2,AID_consensus, Aq2t, A_p1_to_target,patch_width=5,noTranslation=True)
     else:
         if GetAllMatches:
             AID_all = lda.GetAllMatches()
@@ -661,8 +667,10 @@ def siftAID(img1,img2, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num =
     if GFilter[0:5] in ['Aff_H','Aff_O']:
         useORSA = GFilter[4] == 'O'
         from AffRANSAC import Aff_RANSAC_H
-        Aq2t = get_Aq2t(A_list1, patches1, A_list2, patches2, AID_all, method=affmaps_method)
+        Aq2t, A_p1_to_target = get_Aq2t(A_list1, patches1, A_list2, patches2, AID_all, method=affmaps_method) 
         _, H_AID, AID_consensus = Aff_RANSAC_H(img1, KPlist1, img2, KPlist2, AID_all, AffInfo=int(GFilter[6]), precision=EuPrecision, Aq2t=Aq2t, ORSAlike=useORSA, Niter=ransac_iters)
+        if Visual:
+            save_randomAffineInliers(img1,img2,KPlist1,KPlist2,A_list1,A_list2,AID_consensus, Aq2t, A_p1_to_target)       
     else:
         if RegionGrowingIters>=0:
             AID_consensus, H_AID = lda.GeometricFilter(KPlist1, img1, KPlist2, img2, AID_all, Filter=GFilter, precision=EuPrecision)

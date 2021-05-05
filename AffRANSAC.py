@@ -258,7 +258,9 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
     AffInfo == 0 - RANSAC Vanilla
     AffInfo == 1 - Fit Homography to affine info + Classic Validation
     AffInfo == 2 - Fit Homography to affine info + Affine Validation
-    '''    
+    '''  
+    for i,m in enumerate(cvMatches):
+        m.imgIdx = i
     def compute_image_patches(img, cvPts):
         ''' 
         Compute AID descriptors for:

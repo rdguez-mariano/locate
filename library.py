@@ -1661,6 +1661,7 @@ def get_Aq2t(Alist_q_2_p1, patches1, Alist_t_to_p2, patches2, cvMatches, method=
         exit()
 
     assert method=="simple" or len(cvMatches)==len(A_p1_to_p2_list)
+    A_p1_to_target = []
     for i,m in enumerate(cvMatches):
         Akp1 = Alist_q_2_p1[m.queryIdx]
         Akp2 = Alist_t_to_p2[m.trainIdx]
@@ -1671,4 +1672,81 @@ def get_Aq2t(Alist_q_2_p1, patches1, Alist_t_to_p2, patches2, cvMatches, method=
         A_query_to_p2 = ComposeAffineMaps(A_p1_to_p2,Akp1)
         A_query_to_target = ComposeAffineMaps( cv2.invertAffineTransform(Akp2), A_query_to_p2 )
         Aq2t.append( A_query_to_target )
-    return Aq2t
+        A_p1_to_target.append( ComposeAffineMaps( cv2.invertAffineTransform(Akp2), A_p1_to_p2 ) )
+
+    return Aq2t, A_p1_to_target
+
+
+def AffineGridCoor(size,A):
+    w2, h2 = size
+    xvec = [x for x in np.arange(0, h2)]
+    yvec = [y for y in np.arange(0, w2)]
+    X,Y = np.meshgrid(xvec, yvec)
+    XA = A[0,0]*X + A[0,1] * Y + A[0,2]
+    YA = A[1,0]*X + A[1,1] * Y + A[1,2]
+    return XA, YA
+
+
+import copy
+def save_randomAffineInliers(img1,img2,KPlist1,KPlist2,A_list1,A_list2, consensus, Aq2t, A_p1_to_target, Nshow =10, patch_width = 60, noTranslation = False):
+    """ 
+    Remark: consensus (subset of M_T) is a list of cvMatches where each m.imgIdx is pointing at the position in the parent 
+    list of all matches (M_T). Aff_RANSAC_H is creating that indexing automatically. If not it needs to be done manually.
+    """
+    img1 = copy.deepcopy(img1)
+    img2 = copy.deepcopy(img2)
+    consensus = np.random.permutation(consensus)[0:np.min([len(consensus),Nshow])]
+    SquarePatch = SquareOrderedPts(patch_width,patch_width,CV=True)
+    mask = np.zeros((patch_width-1, patch_width-1), np.uint8)
+    mask[:] = 1.0
+    cornersQ, cornersT = [], []
+    imgs = []
+    masks = []
+    kps1, kps2 = [], []
+    h2, w2 = img2.shape[:2]
+    
+    flags = cv2.INTER_LINEAR
+    for m in consensus:
+        Akp1 = A_list1[m.queryIdx] 
+        Akp2 = A_list2[m.trainIdx]
+        this_A_p1_to_target = A_p1_to_target[m.imgIdx]
+        if noTranslation:
+            patchcenter = np.array([(patch_width-1)/2,(patch_width-1)/2])
+            Akp1[:,2] = patchcenter - np.matmul(Akp1[0:2,0:2],KPlist1[m.queryIdx].pt)
+            Akp2[:,2] = patchcenter - np.matmul(Akp2[0:2,0:2],KPlist2[m.trainIdx].pt)
+            this_A_p1_to_target[:,2] = KPlist2[m.trainIdx].pt - np.matmul(this_A_p1_to_target[0:2,0:2],patchcenter)            
+
+        kps1.append( KPlist1[m.queryIdx] )
+        kps2.append( KPlist2[m.trainIdx] )
+        A = Aq2t[m.imgIdx]
+        cornersQ.append( AffineKPcoor(SquarePatch, cv2.invertAffineTransform(Akp1)) )
+        cornersT.append( AffineKPcoor(SquarePatch, this_A_p1_to_target) )
+        img = cv2.warpAffine(img1, A, (w2, h2), flags=flags, borderMode=cv2.BORDER_CONSTANT)
+        
+        affinemask = np.zeros((h2,w2))
+        X,Y = AffineGridCoor(img2.shape[:2],cv2.invertAffineTransform(this_A_p1_to_target))
+        logical_map = (X>=0) * (X < patch_width-1) * (Y>=0) * (Y < patch_width-1)
+        affinemask[logical_map] = 1.0
+        img = img*affinemask
+        imgs.append( img )
+        masks.append( affinemask )
+    
+    masks = np.sum(masks,axis=0)
+    backimg = 0.5*img2
+    backimg[masks>0] = 0.0
+    masks[masks==0] = 1.0
+
+    img = np.sum(imgs,axis=0)/masks
+
+    img = np.sum(imgs,axis=0)/masks + backimg
+    for n in range(len(cornersT)):
+        pts = np.array([np.array(kp.pt) for kp in cornersT[n]], np.int32)
+        pts = pts.reshape((-1,1,2))
+        img = cv2.polylines(img,[pts],True,(255,255,255))
+
+        pts = np.array([np.array(kp.pt) for kp in cornersQ[n]], np.int32)
+        pts = pts.reshape((-1,1,2))
+        img1 = cv2.polylines(img1,[pts],True,(255,255,255))
+
+    img3 = cv2.drawMatches(img1,kps1,img.astype(np.uint8),kps2,[cv2.DMatch(i,i,1.0) for i in range(len(kps1))], None,flags=2)
+    cv2.imwrite(opt.workdir+'randomAffineInliers.png',img3)    

@@ -42,7 +42,7 @@
             "description": "Query image",
             "dtype": "3x8i",
             "ext": ".png",
-            "max_pixels": "1000 * 1000",
+            "max_pixels": "800 * 600",
             "max_weight": "1024*1024*10",
             "required": true,
             "type": "image"
@@ -51,9 +51,9 @@
             "description": "Target image",
             "dtype": "3x8i",
             "ext": ".png",
-            "max_pixels": "1000 * 1000",
+            "max_pixels": "800 * 600",
             "max_weight": "1024*1024*10",
-            "required": false,
+            "required": true,
             "type": "image"
         }
   ],
@@ -115,11 +115,12 @@
             "label": "<center> Homography estimator </center>",
             "type": "selection_radio",
             "values": {
-                "RANSAC Vanilla </br>":"Aff_H_0",
-                "RANSAC 2pts </br>": "Aff_H_1",
-                "RANSAC affine </br>": "Aff_H_2",
-                "RANSAC 2pts (NFA) </br>": "Aff_O_1",
-                "RANSAC affine (NFA) </br>": "Aff_O_2"
+                "RANSAC<sub>base</sub> </br>":"Aff_H_0",
+                "RANSAC<sub>2pts</sub> </br>": "Aff_H_1",
+                "RANSAC<sub>affine</sub> </br>": "Aff_H_2",
+                "RANSAC<sub>base</sub> (NFA) </br>":"Aff_O_0",
+                "RANSAC<sub>2pts</sub> (NFA) </br>": "Aff_O_1",
+                "RANSAC<sub>affine</sub> (NFA) </br>": "Aff_O_2"
             },
             "default_value": "Aff_H_2",
             "vertical": true
@@ -134,7 +135,7 @@
                 "Naive method</br>": "simple"
             },
             "default_value": "locate",
-            "visible": "params.gfilter!='Aff_H_0'",
+            "visible": "params.gfilter!='Aff_H_0' && params.gfilter!='Aff_O_0'",
             "vertical": true
         },
         {
