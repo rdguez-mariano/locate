@@ -169,7 +169,10 @@
         {
             "contents": {
                 "Matches in consensus": {"img": "matches.png"},
+                "10 random affine inliers": {"img": "randomAffineInliers.png"},
                 "All Matches": {"img": "all_matches.png"},
+                "Query": {"img": "input_0.png"},
+                "Target": {"img": "input_1.png"},
                 "Query on Target": {"img": "queryontarget.png"}
             },
             "label": "",
