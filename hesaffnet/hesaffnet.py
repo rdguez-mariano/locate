@@ -182,8 +182,8 @@ def HessAffNetHardNet_Detect(img, Nfeatures=500):
 
     # these are my affine maps to work with
     Alist = convertLAFs_to_A23format(LAFs).cpu().numpy().astype(np.float32)
-    KPlist = [cv2.KeyPoint(x=A[0,2], y=A[1,2], _size=10, _angle=0.0,
-                               _response=1, _octave=packSIFTOctave(0,0),_class_id=1)
+    KPlist = [cv2.KeyPoint(x=A[0,2], y=A[1,2], size=10, angle=0.0,
+                               response=1, octave=packSIFTOctave(0,0),class_id=1)
                                 for A in Alist]
     return KPlist, Alist, responses
 
@@ -203,8 +203,8 @@ def HessAffNetHardNet_DetectAndDescribe(img, PatchSize=60, Nfeatures=500, useAff
 
     # these are my affine maps to work with
     Alist = convertLAFs_to_A23format(LAFs).cpu().numpy().astype(np.float32)
-    KPlist = [cv2.KeyPoint(x=A[0,2], y=A[1,2], _size=10, _angle=0.0,
-                               _response=1, _octave=packSIFTOctave(0,0),_class_id=1)
+    KPlist = [cv2.KeyPoint(x=A[0,2], y=A[1,2], size=10, angle=0.0,
+                               response=1, octave=packSIFTOctave(0,0),class_id=1)
                                 for A in Alist]
     return KPlist, patches.detach().cpu().numpy(), descriptors, Alist, responses
 
@@ -222,8 +222,8 @@ def HessAff_Detect(img, PatchSize=60, Nfeatures=500):
 
     # these are my affine maps to work with
     Alist = convertLAFs_to_A23format(LAFs).cpu().numpy().astype(np.float32)
-    KPlist = [cv2.KeyPoint(x=A[0,2], y=A[1,2], _size=10, _angle=0.0,
-                               _response=1, _octave=packSIFTOctave(0,0),_class_id=1)
+    KPlist = [cv2.KeyPoint(x=A[0,2], y=A[1,2], size=10, angle=0.0,
+                               response=1, octave=packSIFTOctave(0,0),class_id=1)
                                 for A in Alist]
     return KPlist, np.array(patches), Alist, responses.cpu()
 

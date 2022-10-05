@@ -299,22 +299,20 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
             
             ## degub keyponits to keep track in images
             InPatchKeys2seek = [cv2.KeyPoint(x = w/2+pxl_radius*i - pxl_radius/2, y = h/2 +pxl_radius*j - pxl_radius/2,
-                _size =  cvkeys1[idx1].size, 
-                _angle =  0.0,
-                _response =  cvkeys1[idx1].response, _octave =  cvkeys1[idx1].octave,
-                _class_id =  i*2+j) for i in range(0,2) for j in range(0,2)]
+                size =  cvkeys1[idx1].size, 
+                angle =  0.0,
+                response =  cvkeys1[idx1].response, octave =  cvkeys1[idx1].octave,
+                class_id =  i*2+j) for i in range(0,2) for j in range(0,2)]
             InPatchKeys2seek.append(cv2.KeyPoint(x = w/2, y = h/2,
-                _size =  cvkeys1[idx1].size, 
-                _angle =  0.0,
-                _response =  cvkeys1[idx1].response, _octave =  cvkeys1[idx1].octave,
-                _class_id =  -1))
+                size =  cvkeys1[idx1].size, 
+                angle =  0.0,
+                response =  cvkeys1[idx1].response, octave =  cvkeys1[idx1].octave,
+                class_id =  -1))
             temp = AffineKPcoor(InPatchKeys2seek, cv2.invertAffineTransform(Akp1[n]))
             keys2seek.append( temp ) 
         
         if Aq2t is None:
-            global graph
-            with graph.as_default():
-                bEsti =LOCATEmodel.layers[2].predict(bP)
+            bEsti =LOCATEmodel.layers[2].predict(bP)
         GA = GenAffine("", DryRun=True)
         
         if Aq2t is None:

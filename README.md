@@ -9,7 +9,7 @@ In order to quickly start using LOCATE we advise you to install [anaconda](https
 ##### Creating a conda environment for LOCATE
 
 ```bash
-conda create --name locate python=3.5.4
+conda create --name locate python=3.9.14
 
 source activate locate
 
@@ -21,15 +21,6 @@ pip install -r requirements.txt
 
 ```bash
 mkdir -p build && cd build && cmake .. && make && mv libDA.so ..
-```
-
-##### Possible install errors
-
-If AttributeError: module 'cv2.cv2' has no attribute 'xfeatures2d' reinstall opencv-contrib
-
-```bash
-pip uninstall opencv-contrib-python
-pip install opencv-python==3.4.2.16
 ```
 
 #### Uninstall the LOCATE environment
@@ -132,7 +123,7 @@ LOCATE can also be used with other descriptors, but they should be based on the 
 
 ```python
 # SIFT + Affnet + HardNet + RANSAC_affine with affine maps provided by Affnet
-_, good_HC, KPlist1, KPlist2, H_sift, ET_KP, ET_M = SIFT_AffNet_HardNet(img1,img2, MatchingThres = 0.8, GFilter='Aff_H-N-2')
+_, good_HC, KPlist1, KPlist2, H_sift, ET_KP, ET_M = SIFT_AffNet_HardNet(img1,img2, MatchingThres = 0.8, GFilter='Aff_H-2')
 print("SIFT-Affnet + RANSAC_affine with Affnet --> FilteredMatches = %d, KeypointsTime = %3.3f, MatchingTime = %3.3f" %(len(good_HC),ET_KP,ET_M))
 
 # SIFT + Affnet + HardNet + RANSAC_affine with affine maps provided by LOCATE

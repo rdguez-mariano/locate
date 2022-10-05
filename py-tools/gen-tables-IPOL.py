@@ -77,9 +77,7 @@ def LaunchAndRecord_Aff_RANSAC_H(MS, p, kplistq, kplistt, total, AffInfo = 0, Aq
             keys2seek.append( temp ) 
         
         if Aq2t is None:
-            global graph
-            with graph.as_default():
-                bEsti =LOCATEmodel.layers[2].predict(bP)
+            bEsti =LOCATEmodel.layers[2].predict(bP)
         GA = GenAffine("", DryRun=True)
         
         if Aq2t is None:
@@ -271,20 +269,14 @@ def Modified_siftAID(img1,img2, MatchingThres = math.inf, Simi='SignProx', knn_n
     for k in range(0,len(patches1)):
         bP[k,:,:,0] = patches1[k][:,:]/255.0
     
-    global graph
-    global tfsession
-    with graph.as_default(): 
-        with tfsession.as_default():       
-            emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
-            emb_1 = CreateSubDesc(emb_1, coef=1.0, NewDescRadius=descRadius)
+    emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
+    emb_1 = CreateSubDesc(emb_1, coef=1.0, NewDescRadius=descRadius)
 
     bP = np.zeros( shape=tuple([len(patches2)])+tuple(np.shape(patches2[0]))+tuple([1]), dtype=np.float32)
     for k in range(0,len(patches2)):
         bP[k,:,:,0] = patches2[k][:,:]/255.0
-    with graph.as_default(): 
-        with tfsession.as_default():
-            emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
-            emb_2 = CreateSubDesc(emb_2, coef=-1.0, NewDescRadius=descRadius)
+    emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
+    emb_2 = CreateSubDesc(emb_2, coef=-1.0, NewDescRadius=descRadius)
     
     ET_KP = time.time() - start_time
 
@@ -325,20 +317,14 @@ def Modified_HessAffAID(img1,img2, Ndesc=500, MatchingThres = math.inf, Simi='Si
     bP = np.zeros( shape = tuple([patches1.shape[0], patches1.shape[2], patches1.shape[3], 1]), dtype=np.float32)
     for k in range(0,len(patches1)):
         bP[k,:,:,0] = patches1[k,0,:,:]/255.0
-    global graph
-    global tfsession
-    with graph.as_default(): 
-        with tfsession.as_default():       
-            emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
-            emb_1 = CreateSubDesc(emb_1, coef=1.0, NewDescRadius=descRadius)
+    emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
+    emb_1 = CreateSubDesc(emb_1, coef=1.0, NewDescRadius=descRadius)
 
     bP = np.zeros( shape = tuple([patches2.shape[0], patches2.shape[2], patches2.shape[3], 1]), dtype=np.float32)
     for k in range(0,len(patches2)):
         bP[k,:,:,0] = patches2[k,0,:,:]/255.0
-    with graph.as_default(): 
-        with tfsession.as_default():    
-            emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
-            emb_2 = CreateSubDesc(emb_2, coef=-1.0, NewDescRadius=descRadius)
+    emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
+    emb_2 = CreateSubDesc(emb_2, coef=-1.0, NewDescRadius=descRadius)
     
     ET_KP = time.time() - start_time
 

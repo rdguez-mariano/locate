@@ -713,12 +713,12 @@ def FindBestKPinLists(lambda1,lambda2, kp_list1, kp_list2):
 
 def features_deepcopy(f):
     return [cv2.KeyPoint(x = k.pt[0], y = k.pt[1],
-            _size = k.size, _angle = k.angle,
-            _response = k.response, _octave = k.octave,
-            _class_id = k.class_id) for k in f]
+            size = k.size, angle = k.angle,
+            response = k.response, octave = k.octave,
+            class_id = k.class_id) for k in f]
 
 def matches_deepcopy(f):
-    return [cv2.DMatch(_queryIdx=k.queryIdx, _trainIdx=k.trainIdx, _distance=k.distance) for k in f]
+    return [cv2.DMatch(k.queryIdx, k.trainIdx, k.distance) for k in f]
 
 
 def Filter_Affine_In_Rect(kp_list, A, p_min, p_max, desc_list = None, isSIFT=False):
@@ -1211,10 +1211,10 @@ def SquareOrderedPts(hs,ws,CV=True):
     hs = hs - 1
     if CV:
         return [
-            cv2.KeyPoint(x = 0,  y =0, _size = 10, _angle = 0, _response = 1.0, _octave = 0, _class_id = 0),
-            cv2.KeyPoint(x = ws, y =0, _size = 10, _angle = 0, _response = 1.0, _octave = 0, _class_id = 0),
-            cv2.KeyPoint(x = ws, y =hs, _size = 10, _angle = 0, _response = 1.0, _octave = 0, _class_id = 0),
-            cv2.KeyPoint(x = 0,  y =hs, _size = 10, _angle = 0, _response = 1.0, _octave = 0, _class_id = 0)
+            cv2.KeyPoint(x = 0,  y =0, size = 10, angle = 0, response = 1.0, octave = 0, class_id = 0),
+            cv2.KeyPoint(x = ws, y =0, size = 10, angle = 0, response = 1.0, octave = 0, class_id = 0),
+            cv2.KeyPoint(x = ws, y =hs, size = 10, angle = 0, response = 1.0, octave = 0, class_id = 0),
+            cv2.KeyPoint(x = 0,  y =hs, size = 10, angle = 0, response = 1.0, octave = 0, class_id = 0)
             ]
     else:
         # return np.float32([ [0,0], [ws+1,0], [ws+1, hs+1], [0,hs+1] ])
@@ -1460,8 +1460,8 @@ class CPPbridge(object):
         desc_list = descs.reshape(-1,128).astype(np.float32)
         # desc_list = [ descs[descdim*i:descdim*(i+1)] for i in range(NoD) ]
 
-        KPlist = [cv2.KeyPoint(x=Data[dataDim*i+4], y=Data[dataDim*i+5], _size=10, _angle=0.0,
-                               _response=1, _octave=packSIFTOctave(0,0),_class_id=1)
+        KPlist = [cv2.KeyPoint(x=Data[dataDim*i+4], y=Data[dataDim*i+5], size=10, angle=0.0,
+                               response=1, octave=packSIFTOctave(0,0),class_id=1)
                                 for i in range(0,NoD)]
 
         Alist = [ np.reshape([Data[dataDim*i], Data[dataDim*i+1], Data[dataDim*i+4] , Data[dataDim*i+2], Data[dataDim*i+3], Data[dataDim*i+5] ], [2,3])
@@ -1495,7 +1495,7 @@ class CPPbridge(object):
             FM = np.zeros(3*NFM, dtype = ctypes.c_int)
             self.libDA.ArrayOfFilteredMatches(self.MatcherPtr,FM.ctypes.data_as(intp))
             # print(NFM,FM)                
-            Matches = [cv2.DMatch(FM[3*i],FM[3*i+1],FM[3*i+2]) for i in range(0,NFM)]
+            Matches = [cv2.DMatch(FM[3*i], FM[3*i+1], float(FM[3*i+2])) for i in range(0,NFM)]
         else:
             Matches = []
         return Matches, T.astype(np.float).reshape(3,3)
@@ -1507,7 +1507,7 @@ class CPPbridge(object):
             FM = np.zeros(3*NFM, dtype = ctypes.c_int)
             intp = ctypes.POINTER(ctypes.c_int)
             self.libDA.ArrayOfFilteredMatches(self.MatcherPtr,FM.ctypes.data_as(intp))           
-            Matches = [cv2.DMatch(FM[3*i],FM[3*i+1],FM[3*i+2]) for i in range(0,NFM)]
+            Matches = [cv2.DMatch(FM[3*i],FM[3*i+1],float(FM[3*i+2])) for i in range(0,NFM)]
         else:
             Matches = []
         return Matches
@@ -1521,7 +1521,7 @@ class CPPbridge(object):
             floatp = ctypes.POINTER(ctypes.c_float)
             intp = ctypes.POINTER(ctypes.c_int)
             self.libDA.GetData_from_QueryNode(qn, Query_idx.ctypes.data_as(intp), Target_idxs.ctypes.data_as(intp), simis.ctypes.data_as(floatp))
-            return [cv2.DMatch(Query_idx[0], Target_idxs[i], simis[i]) for i in range(0,N)]
+            return [cv2.DMatch(Query_idx[0], Target_idxs[i], float(simis[i])) for i in range(0,N)]
         else:
             return []
 
@@ -1617,14 +1617,12 @@ def get_Aq2t(Alist_q_2_p1, patches1, Alist_t_to_p2, patches2, cvMatches, method=
     if method=="simple":
             A_p1_to_p2 = np.float32([[1, 0, 0], [0, 1, 0]])
     elif method=="locate":
-        from libLocalDesc import graph, LOCATEmodel
+        from libLocalDesc import LOCATEmodel
         GA = GenAffine("", DryRun=True)
         bP = np.zeros(shape=tuple([len(cvMatches),60,60,2]), dtype = np.float32)
         for i,m in enumerate(cvMatches):
             bP[i,:,:,:] = np.dstack((patches1[m.queryIdx]/255.0, patches2[m.trainIdx]/255.0))
-        global graph
-        with graph.as_default():
-            bEsti = LOCATEmodel.layers[2].predict(bP)
+        bEsti = LOCATEmodel.layers[2].predict(bP)
         for i,m in enumerate(cvMatches):
             evec = bEsti[i,:]
             A_p1_to_p2 = cv2.invertAffineTransform( GA.AffineFromNormalizedVector(evec) )

@@ -78,9 +78,7 @@ def LaunchAndRecord_Aff_RANSAC_H(MS, p, kplistq, kplistt, total, AffInfo = 0, Aq
             keys2seek.append( temp ) 
         
         if Aq2t is None:
-            global graph
-            with graph.as_default():
-                bEsti =LOCATEmodel.layers[2].predict(bP)
+            bEsti =LOCATEmodel.layers[2].predict(bP)
         GA = GenAffine("", DryRun=True)
         
         if Aq2t is None:

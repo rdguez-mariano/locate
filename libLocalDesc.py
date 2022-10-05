@@ -21,7 +21,6 @@ config = tf.ConfigProto(allow_soft_placement=True
 config.gpu_options.per_process_gpu_memory_fraction = 0.1
 tfsession = tf.Session(config=config)
 set_session(tfsession)
-graph = tf.get_default_graph()
 
 #  VGG like network
 vgg_input_shape = tuple([60,60]) + tuple([1])
@@ -95,15 +94,15 @@ def GrowMatches(KPlist1, pyr1, KPlist2, pyr2, Qmap, growed_matches, growing_matc
         Akp1.append(kp2LocalAffine(KPlist1[idx1]))
         Akp2.append(kp2LocalAffine(KPlist2[idx2]))
         InPatchKeys2seek = [cv2.KeyPoint(x = w/2+pxl_radius*i - pxl_radius/2, y = h/2 +pxl_radius*j - pxl_radius/2,
-            _size =  2.0, 
-            _angle =  0.0,
-            _response =  KPlist1[idx1].response, _octave =  packSIFTOctave(-1,0),
-            _class_id =  i*2+j) for i in range(0,2) for j in range(0,2)]
+            size =  2.0, 
+            angle =  0.0,
+            response =  KPlist1[idx1].response, octave =  packSIFTOctave(-1,0),
+            class_id =  i*2+j) for i in range(0,2) for j in range(0,2)]
         InPatchKeys2seek.append(cv2.KeyPoint(x = w/2, y = h/2,
-            _size =  2.0, 
-            _angle =  0.0,
-            _response =  KPlist1[idx1].response, _octave =  packSIFTOctave(-1,0),
-            _class_id =  -1))
+            size =  2.0, 
+            angle =  0.0,
+            response =  KPlist1[idx1].response, octave =  packSIFTOctave(-1,0),
+            class_id =  -1))
         temp = AffineKPcoor(InPatchKeys2seek, cv2.invertAffineTransform(Akp1[n]))
         temp, _ = Filter_Affine_In_Rect(temp,Identity,[0,0],[w1,h1]) 
         keys2seek.append( temp )        
@@ -275,7 +274,7 @@ def HessAff_HardNet(img1,img2, MatchingThres = opt.hardnet_thres, Ndesc=500, GFi
     tent_matches_in_1, tent_matches_in_2 = BruteForce4HardNet(descriptors1,descriptors2, SNN_threshold=MatchingThres)
     ET_M = time.time() - start_time
 
-    sift_all = OnlyUniqueMatches( [cv2.DMatch(i, j, 1.0) for i,j in zip(tent_matches_in_1,tent_matches_in_2)], KPlist1, KPlist2 )
+    sift_all = OnlyUniqueMatches( [cv2.DMatch(int(i), int(j), 1.0) for i,j in zip(tent_matches_in_1,tent_matches_in_2)], KPlist1, KPlist2 )
 
     if GFilter[0:5] in ['Aff_H','Aff_O']:
         useORSA = GFilter[4] == 'O'
@@ -535,20 +534,14 @@ def HessAffAID(img1,img2, Ndesc=500, MatchingThres = opt.aid_thres, Simi='SignPr
     bP = np.zeros( shape = tuple([patches1.shape[0], patches1.shape[2], patches1.shape[3], 1]), dtype=np.float32)
     for k in range(0,len(patches1)):
         bP[k,:,:,0] = patches1[k,0,:,:]/255.0
-    global graph
-    global tfsession
-    with graph.as_default(): 
-        with tfsession.as_default():       
-            emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
-            emb_1 = CreateSubDesc(emb_1, coef=1.0, NewDescRadius=descRadius)
+    emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
+    emb_1 = CreateSubDesc(emb_1, coef=1.0, NewDescRadius=descRadius)
 
     bP = np.zeros( shape = tuple([patches2.shape[0], patches2.shape[2], patches2.shape[3], 1]), dtype=np.float32)
     for k in range(0,len(patches2)):
         bP[k,:,:,0] = patches2[k,0,:,:]/255.0
-    with graph.as_default(): 
-        with tfsession.as_default():    
-            emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
-            emb_2 = CreateSubDesc(emb_2, coef=-1.0, NewDescRadius=descRadius)
+    emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
+    emb_2 = CreateSubDesc(emb_2, coef=-1.0, NewDescRadius=descRadius)
     
     ET_KP = time.time() - start_time
 
@@ -623,20 +616,14 @@ def siftAID(img1,img2, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num =
     for k in range(0,len(patches1)):
         bP[k,:,:,0] = patches1[k][:,:]/255.0
     
-    global graph
-    global tfsession
-    with graph.as_default(): 
-        with tfsession.as_default():       
-            emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
-            emb_1 = CreateSubDesc(emb_1, coef=1.0, NewDescRadius=descRadius)
+    emb_1 = BigAIDmodel.get_layer("aff_desc").predict(bP)
+    emb_1 = CreateSubDesc(emb_1, coef=1.0, NewDescRadius=descRadius)
 
     bP = np.zeros( shape=tuple([len(patches2)])+tuple(np.shape(patches2[0]))+tuple([1]), dtype=np.float32)
     for k in range(0,len(patches2)):
         bP[k,:,:,0] = patches2[k][:,:]/255.0
-    with graph.as_default(): 
-        with tfsession.as_default():
-            emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
-            emb_2 = CreateSubDesc(emb_2, coef=-1.0, NewDescRadius=descRadius)
+    emb_2 = BigAIDmodel.get_layer("aff_desc").predict(bP)
+    emb_2 = CreateSubDesc(emb_2, coef=-1.0, NewDescRadius=descRadius)
     
     ET_KP = time.time() - start_time
 
@@ -662,6 +649,8 @@ def siftAID(img1,img2, MatchingThres = opt.aid_thres, Simi='SignProx', knn_num =
             if len(growing_matches)==0:
                 break
         AID_all = growed_matches 
+        patches1, A_list1, Ai_list1 = ComputePatches(KPlist1,pyr1)
+        patches2, A_list2, Ai_list2 = ComputePatches(KPlist2,pyr2)
     ET_G = time.time() - start_time 
     
     if GFilter[0:5] in ['Aff_H','Aff_O']:
